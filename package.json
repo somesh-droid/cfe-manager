@@ -1,0 +1,8 @@
+{
+  "name": "cfe-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CFE Manager: prototype of Reliance's hourly clean-energy service (T.U.P XII). Simulated data.",
+  "scripts": { "build": "node build.js" },
+  "devDependencies": { "clean-css": "5.3.3", "terser": "5.31.0" }
+}
