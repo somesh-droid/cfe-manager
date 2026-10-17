@@ -1,12 +1,13 @@
 /* ===================== SHELL: roles, routing, events ===================== */
 const ROLES = {
-  manager: { name: 'CFE Manager', who: 'Reliance energy-services desk', person: 'Portfolio operations lead', c: 'var(--r-manager)', nav: [['control', 'Control room', 'Operate'], ['blocks', 'Block by block', 'Operate'], ['orchestration', 'Orchestration', 'Operate'], ['evidence', 'Evidence', 'Operate'], ['analytics', 'Analytics', 'Operate'], ['onboarding', 'Onboarding queue', 'Grow'], ['customers', 'Customers', 'Grow'], ['suppliers', 'Suppliers', 'Grow'], ['contracts', 'Contracts', 'Grow'], ['feasibility', 'Feasibility and scale', 'Grow'], ['ecosystem', 'Ecosystem and compliance', 'Govern'], ['checks', 'System checks', 'Govern']] },
+  manager: { name: 'CFE Manager', who: 'Reliance energy-services desk', person: 'Portfolio operations lead', c: 'var(--r-manager)', nav: [['control', 'Control room', 'Operate'], ['blocks', 'Block by block', 'Operate'], ['orchestration', 'Orchestration', 'Operate'], ['evidence', 'Evidence', 'Operate'], ['analytics', 'Analytics', 'Operate'], ['value', 'Platform value', 'Business'], ['commercial', 'Commercials', 'Business'], ['advantage', 'Why Reliance', 'Business'], ['expansion', 'Expansion', 'Business'], ['onboarding', 'Onboarding queue', 'Grow'], ['customers', 'Customers', 'Grow'], ['suppliers', 'Suppliers', 'Grow'], ['contracts', 'Contracts', 'Grow'], ['feasibility', 'Feasibility and scale', 'Grow'], ['ecosystem', 'Ecosystem and compliance', 'Govern'], ['checks', 'System checks', 'Govern']] },
+  judge: { name: 'Judge demo', portal: 'Judge demo', c: '#B36A00', nav: [['j1', 'The problem', 'Scenes'], ['j2', 'The decision', 'Scenes'], ['j3', 'The proof', 'Scenes'], ['j4', 'The return', 'Scenes']] },
   customer: { name: 'Customer', portal: 'Customer portal', c: 'var(--r-customer)', live: ['Hyperscaler A · JMN-DC-01', 'Live account (illustrative) · Head of energy procurement'], nav: [['c_start', 'Get started', 'Onboarding'], ['c_onboard', 'Application', 'Onboarding'], ['c_service', 'My service', 'Live account'], ['c_statement', 'Monthly statement', 'Live account']] },
   supplier: { name: 'Supplier', portal: 'Supplier portal', c: 'var(--r-supplier)', live: ['Kutch Wind Farm · KTC-WND-02', 'Live asset (illustrative) · IPP commercial manager'], nav: [['s_start', 'Get started', 'Onboarding'], ['s_onboard', 'Application', 'Onboarding'], ['s_asset', 'My asset', 'Live asset']] },
   trader: { name: 'Trading member', portal: 'Trading member desk', c: 'var(--r-trader)', live: ['Partner trading member (illustrative)', 'Licensed exchange member · power trading desk'], nav: [['t_start', 'Get started', 'Onboarding'], ['t_desk', 'Order desk', 'Live']] },
   verifier: { name: 'Verifier', portal: 'Verifier portal', c: 'var(--r-verifier)', live: ['Assurance firm (illustrative)', 'Independent claims verifier · read-only'], nav: [['v_start', 'Get started', 'Onboarding'], ['v_review', 'Month review', 'Live']] }
 };
-const LAST_VIEW = { home: 'home', manager: 'control', customer: 'c_start', supplier: 's_start', trader: 't_start', verifier: 'v_start' };
+const LAST_VIEW = { judge: 'j1', home: 'home', manager: 'control', customer: 'c_start', supplier: 's_start', trader: 't_start', verifier: 'v_start' };
 
 function groupedNav(nav, render1) { let g = null, out = ''; nav.forEach(([v, l, grp]) => { if (grp !== g) { out += `<span class="grp">${grp}</span>`; g = grp; } out += render1(v, l); }); return out; }
 function renderSide() {
@@ -19,7 +20,7 @@ function renderSide() {
 function renderTop() {
   const home = state.role === 'home', r = ROLES[state.role];
   let c = '';
-  if (!home) { const item = r.nav.find(x => x[0] === state.view); c = `<span class="sep">/</span><span class="capp"><span class="dot" style="background:${r.c}"></span>${state.role === 'manager' ? 'Operations console' : r.portal}</span>${item ? `<span class="sep">/</span><span>${item[1]}</span>` : ''}`; }
+  if (!home) { const item = r.nav.find(x => x[0] === state.view); c = `<span class="sep">/</span><span class="capp"><span class="dot" style="background:${r.c}"></span>${state.role === 'manager' ? 'Operations console' : r.portal}</span>${item ? `<span class="sep">/</span><span>${item[1]}</span>` : ''}${state.role === 'manager' ? `<span class="clock" title="One simulation clock drives as-of views; statements replay the full month">Sim clock · ${dayLabel(state.day)} ${blkTime(state.block)}</span>` : ''}`; }
   $('crumb').innerHTML = c;
   const apps = [['home', 'All portals', 'Start screen', 'var(--faint)'], ['manager', 'Operations console', 'Reliance CFE desk', ROLES.manager.c], ...['customer', 'supplier', 'trader', 'verifier'].map(k => [k, ROLES[k].portal, DOORS.find(d => d.r === k).for, ROLES[k].c])];
   $('switchPop').innerHTML = apps.map(([k, n, s, c]) => `<button class="mi" ${k === 'home' ? 'data-home="1"' : `data-role="${k}"`} aria-current="${state.role === k}"><span class="dot" style="background:${c}"></span><b>${n}</b><span class="s">${s}</span></button>`).join('');
@@ -37,17 +38,18 @@ function render(opts = {}) {
   if (state.view !== 'blocks' && (fTimer || state.fAuto)) stopF();
   if (!opts.noRe) recompute();
   renderTop(); $('switchMenu').open = false;
-  const mgr = state.role === 'manager', home = state.role === 'home';
+  const mgr = state.role === 'manager', home = state.role === 'home', judge = state.role === 'judge';
+  document.body.classList.toggle('stage', judge);
   $('side').hidden = !mgr; document.querySelector('.app').classList.toggle('noside', !mgr);
   if (mgr) renderSide();
   const fn = home ? V.home : (V[state.view] || V.control);
-  $('main').innerHTML = home ? fn() : `<div class="page">${mgr ? '' : portalHeader()}${fn()}</div>`;
+  $('main').innerHTML = home ? fn() : judge ? `<div class="page">${judgeBar()}${fn()}</div>` : `<div class="page">${mgr ? '' : portalHeader()}${fn()}</div>`;
   bindMain();
   if (!opts.keepScroll) window.scrollTo({ top: 0 });
 }
 function setRole(role, view) {
   LAST_VIEW[state.role] = state.view;
-  state.role = role; state.view = view || LAST_VIEW[role] || ROLES[role].nav[0][0];
+  state.role = role; state.view = view || ROLES[role].nav[0][0];
 }
 function bindMain() {
   const m = $('main');
@@ -58,6 +60,7 @@ function bindMain() {
   m.querySelectorAll('details[data-menu]').forEach(d => d.addEventListener('toggle', () => { state.wOpen = d.open; }));
   const bs = $('blkSel'); if (bs) bs.addEventListener('change', () => { stopF(); state.block = +bs.value; state.hourSel = Math.floor(state.block / 4); render({ keepScroll: true }); });
   m.querySelectorAll('rect.hc').forEach(r => r.addEventListener('click', () => { state.day = +r.dataset.d; state.hourSel = +r.dataset.h; state.block = state.hourSel * 4; render({ keepScroll: true }); }));
+  m.querySelectorAll('g[data-route]').forEach(gn => gn.addEventListener('click', () => { state.route = gn.dataset.route; render({ keepScroll: true }); }));
   m.querySelectorAll('g[data-act="eco"]').forEach(gn => gn.addEventListener('click', () => { state.ecoSel = gn.dataset.id; render({ keepScroll: true }); }));
   m.querySelectorAll('g[data-go], g[data-role]').forEach(gn => gn.addEventListener('click', () => { if (gn.dataset.role) setRole(gn.dataset.role); else state.view = gn.dataset.go; render(); }));
 }
@@ -91,14 +94,20 @@ document.addEventListener('click', e => {
   }
   const i = +el.dataset.i;
   switch (act) {
-    case 'dayPrev': stopF(); state.day = (state.day + 29) % 30; break;
-    case 'dayNext': stopF(); state.day = (state.day + 1) % 30; break;
+    case 'dayPrev': stopF(); state.day = (state.day + SIM.DAYS - 1) % SIM.DAYS; break;
+    case 'dayNext': stopF(); state.day = (state.day + 1) % SIM.DAYS; break;
     case 'play': state.playing ? stopPlay() : startPlay(); break;
-    case 'demo': tourStart(DEMO, 'Presentation demo · 2 min', true); return;
+    case 'demo': judgeStart(); render(); return;
+    case 'jStep': judgeSetStep(i); break;
+    case 'jScene': judgeGo(i); break;
+    case 'jPrev': judgeGo(Math.max(0, SCENES.findIndex(s => s.id === state.view) - 1)); break;
+    case 'jNext': { const k = SCENES.findIndex(s => s.id === state.view); if (k === 3) { resetWorld(); state.role = 'home'; state.view = 'home'; } else judgeGo(k + 1); break; }
+    case 'jReset': judgeStart(); toast('Demo reset: scenario, clock, customer and scene 1.'); break;
+    case 'jExit': resetWorld(); state.role = 'home'; state.view = 'home'; break;
     case 'uc': $('ucBtn').click(); return;
     case 'togEv': { const k = el.dataset.k, ix = state.events.findIndex(x => x.key === k && x.d === state.day); if (ix >= 0) { state.events.splice(ix, 1); state.evSel = 0; } else { addEvent(k); toast('What-if on: ' + EVENTS[k].name + ', ' + dayLabel(state.day)); } break; }
-    case 'bPrev': stopF(); if (state.block > 0) state.block--; else { state.day = (state.day + 29) % 30; state.block = 95; } state.hourSel = Math.floor(state.block / 4); break;
-    case 'bNext': stopF(); if (state.block < 95) state.block++; else { state.day = (state.day + 1) % 30; state.block = 0; } state.hourSel = Math.floor(state.block / 4); break;
+    case 'bPrev': stopF(); if (state.block > 0) state.block--; else { state.day = (state.day + SIM.DAYS - 1) % SIM.DAYS; state.block = 95; } state.hourSel = Math.floor(state.block / 4); break;
+    case 'bNext': stopF(); if (state.block < 95) state.block++; else { state.day = (state.day + 1) % SIM.DAYS; state.block = 0; } state.hourSel = Math.floor(state.block / 4); break;
     case 'bPlay': stopF(); playBlock(); return;
     case 'bAuto': if (state.fAuto) { stopF(); break; } stopF(); autoRun(); return;
     case 'jReg': { const s = jrS(el.dataset.r); s.reg = true; s.stage = 0; s.view = 0; toast('Account created and email verified. Stage 1 is open.'); break; }
@@ -133,12 +142,13 @@ document.addEventListener('click', e => {
     case 'swSubmit': swSubmit(); setRole('manager', 'suppliers'); break;
     case 'custRamp': addEvent('loadRamp'); toast('Notice sent. CFE Manager is re-planning tonight’s supply.'); break;
     case 'ack': state.acks[el.dataset.k] = true; break;
-    case 'resample': state.day = (state.day + 1) % 30; break;
+    case 'resample': state.day = (state.day + 1) % SIM.DAYS; break;
     default: return;
   }
   render({ keepScroll: !['cwSubmit', 'swSubmit', 'cwNext', 'swNext', 'cwBack', 'swBack', 'cwGo', 'swGo', 'jApprove', 'jReg'].includes(act) });
 });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.nav a')) e.target.click(); if (e.key === 'Escape') $('ucScrim').hidden = true; });
+document.addEventListener('keydown', e => {
+  if (state.role === 'judge' && !e.target.matches('input,select,textarea') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const k = SCENES.findIndex(s => s.id === state.view); judgeGo(Math.min(3, Math.max(0, k + (e.key === 'ArrowRight' ? 1 : -1)))); render(); return; } if (e.key === 'Enter' && e.target.matches('.nav a')) e.target.click(); if (e.key === 'Escape') $('ucScrim').hidden = true; });
 
 function jrLink(r, stageIdx) {
   const [view, step] = JOURNEYS[r].stages[stageIdx].link;
@@ -152,7 +162,7 @@ function stopPlay() { state.playing = false; clearInterval(playT); playT = null;
 
 /* ===================== DEMO + USE CASES ===================== */
 const go = (role, view) => () => setRole(role, view);
-function resetWorld() { clearEvents(); state.day = 13; state.block = 84; state.hourSel = 23; stopPlay(); stopF(); }
+function resetWorld() { clearEvents(); state.day = 13; state.block = 84; state.hourSel = 23; stopPlay(); stopF(); state.acct = 'HSA'; state.cw = { step: 0, f: null, diag: null, prop: null, tierPick: 90 }; state.sw = { step: 0, f: null, gates: null, value: null }; state.jr = {}; state.route = 'JMN'; state.jStep = 0; state.wOpen = false; state.fStep = 6; }
 
 const blockAt = (blk) => () => { state.block = blk; state.hourSel = Math.floor(blk / 4); state.fStep = 6; };
 const DEMO = [
@@ -163,7 +173,7 @@ const DEMO = [
   { role: 'supplier', view: 's_onboard', dur: 7, act: () => { state.sw.step = 4; swAdvance(); }, cap: () => `Before any price talk, the engine shows what the asset adds: <b>+${((state.sw.value.after - state.sw.value.before) * 100).toFixed(1)} pts</b> for our live customer, mostly at night.` },
   { role: 'customer', view: 'c_start', dur: 8, act: () => { jrSet('customer', 2); }, cap: '<b>Demand side.</b> A data centre signs up in the customer portal: meter data, diagnostic, proposal, diligence, contract, then shadow mode before go-live.' },
   { role: 'customer', view: 'c_onboard', dur: 9, act: () => { state.cw = { step: 2, f: { ...CW_PRESET }, diag: null, prop: null, tierPick: 90 }; cwAdvance(); }, cap: () => `Its meter data shows 100% renewable on paper is only <b>${pc(state.cw.diag.hourly, 0)} hour by hour</b>. That gap is what we sell.` },
-  { role: 'customer', view: 'c_onboard', dur: 7, act: () => { cwAdvance(); }, cap: 'We size and back-test a portfolio for each tier with the same engine that runs live dispatch.' },
+  { role: 'customer', view: 'c_onboard', dur: 7, act: () => { cwAdvance(); }, cap: 'We size a portfolio for each tier on an illustrative month, using the same engine that runs dispatch.' },
   { role: 'manager', view: 'onboarding', dur: 7, act: () => { jrS('customer').sub = true; }, cap: 'Both applications land in Reliance’s onboarding queue, with an owner and a two-day review target.' },
   { role: 'manager', view: 'blocks', dur: 10, act: () => { resetWorld(); blockAt(88)(); }, after: () => playBlock(), cap: '<b>Live operations.</b> 22:00, one 15-minute block: 97 MW of demand filled in order. Wind first, then the battery charged by afternoon sun, then exchange blocks.' },
   { role: 'manager', view: 'orchestration', dur: 10, act: () => { resetWorld(); addEvent('windLull'); }, cap: 'Forecast: wind drops 65% tonight. The engine re-plans and instructs the <b>battery operator, trading member and SLDC</b>. Each acts in its own system.' },
@@ -258,22 +268,23 @@ function tourShow(i) {
   }
 }
 function tourStart(list, name, timed) { tour.list = list; tour.name = name; tour.timed = timed; tour.auto = timed; $('ucScrim').hidden = true; tourShow(0); }
-function tourEnd() { stopF(); clearTimeout(tour.timer); cancelAnimationFrame(tour.raf); $('narr').hidden = true; tour.list = null; }
+function tourEnd() { resetWorld(); render(); clearTimeout(tour.timer); cancelAnimationFrame(tour.raf); $('narr').hidden = true; tour.list = null; }
 $('narrNext').addEventListener('click', () => tour.i < tour.list.length - 1 ? tourShow(tour.i + 1) : tourEnd());
 $('narrBack').addEventListener('click', () => tour.i > 0 && tourShow(tour.i - 1));
 $('narrExit').addEventListener('click', tourEnd);
 $('narrPlay').addEventListener('click', () => { tour.auto = !tour.auto; tourShow(tour.i); });
-$('demoBtn').addEventListener('click', () => tourStart(DEMO, 'Presentation demo · 2 min', true));
+$('demoBtn').addEventListener('click', () => { tourEnd(); judgeStart(); render(); });
 $('ucBtn').addEventListener('click', () => {
   $('ucDrawer').innerHTML = `<div class="row" style="justify-content:space-between"><div><div class="eyebrow">Q&amp;A library</div><h2>Use cases</h2></div><button class="btn sm" data-close="1">Close</button></div>
   <p class="small muted">Each one sets up the scenario and walks through it step by step. Use Next and Back at your own pace.</p>
-  <button class="uc" data-demo="1"><span class="id">2 MIN</span><span class="t">Presentation demo, manual pace</span><span class="d">The same 15 steps as the timed demo, without the timer.</span><span class="ar">›</span></button>
+  <button class="uc" data-judge="1"><span class="id">JUDGE</span><span class="t">Judge demo · four scenes, 120 seconds</span><span class="d">Problem, decision, proof, return. Manual advance.</span><span class="ar">›</span></button><button class="uc" data-demo="1"><span class="id">TOUR</span><span class="t">Full platform tour, 15 steps</span><span class="d">Ecosystem, onboarding, operations, evidence and statement, step by step.</span><span class="ar">›</span></button>
   ${USE_CASES.map(u => `<button class="uc" data-uc="${u.id}"><span class="id">${u.id}</span><span class="t">${u.t}</span><span class="d">${u.d}</span><span class="ar">›</span></button>`).join('')}`;
   $('ucScrim').hidden = false;
 });
 $('ucScrim').addEventListener('click', e => {
   if (e.target === $('ucScrim') || e.target.closest('[data-close]')) { $('ucScrim').hidden = true; return; }
-  const b = e.target.closest('[data-uc],[data-demo]'); if (!b) return;
+  const b = e.target.closest('[data-uc],[data-demo],[data-judge]'); if (!b) return;
+  if (b.dataset.judge) { $('ucScrim').hidden = true; judgeStart(); render(); return; }
   if (b.dataset.demo) return tourStart(DEMO, 'Presentation demo', false);
   const u = USE_CASES.find(x => x.id === b.dataset.uc); tourStart(u.steps, u.id + ' · ' + u.t, false);
 });

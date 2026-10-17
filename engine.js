@@ -1,8 +1,8 @@
 /* CF90 orchestration engine — SIMULATED DATA ONLY */
 const SIM = (() => {
-  const DAYS = 30, BPD = 96, DT = 0.25, NB = DAYS * BPD;
-  const ENGINE_VERSION = 'cf90-engine-1.0';
-  const DATA_VERSION = 'synthetic-oct26 · seed 2026';
+  const DAYS = 31, BPD = 96, DT = 0.25, NB = DAYS * BPD;
+  const ENGINE_VERSION = 'cf90-engine-1.1';
+  const DATA_VERSION = 'synthetic 1–31 Oct 2026 · seed 2026';
 
   function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -69,7 +69,7 @@ const SIM = (() => {
 
   function run(P, cfg, events) {
     events = events || [];
-    const ls = cfg.loadScale || 1;
+    const ls = cfg.loadScale || 1, naive = cfg.policy === 'naive';
     const rte = cfg.rte || 0.88, etaC = Math.sqrt(rte), etaD = Math.sqrt(rte);
     const Emax = cfg.bessMWh * 0.95, Emin = cfg.bessMWh * 0.10;
     let soc = cfg.bessMWh * 0.5, socClean = soc;
@@ -103,20 +103,20 @@ const SIM = (() => {
       const surplusExcl = surplus - chg;
       let deficit = L - direct;
       const gcWin = act(events, 'gridCharge', i) && h >= 2 && h < 5;
-      if (P_b > 0 && !gcWin && deficit > 0) {
-        dis = Math.max(0, Math.min(deficit, P_b, (soc - Emin) * etaD / DT));
+      if (P_b > 0 && !gcWin && deficit > 0 && (!naive || h >= 18 || h < 6)) {
+        dis = Math.max(0, Math.min(deficit, naive ? (Emax - Emin) * etaD / 12 : P_b, P_b, (soc - Emin) * etaD / DT));
         const out = dis * DT / etaD, frac = soc > 0 ? socClean / soc : 0;
         disElig = dis * frac;
         soc -= out; socClean -= out * frac; sumDisOut += dis; deficit -= dis;
       }
-      const mkt = Math.min(deficit, mAv); deficit -= mkt;
+      const mkt = (!naive || h >= 18) ? Math.min(deficit, mAv) : 0; deficit -= mkt;
       const gridToLoad = Math.max(0, deficit);
       if (P_b > 0 && gcWin && soc < 0.6 * cfg.bessMWh) {
         gc = Math.min(P_b * 0.5, (0.6 * cfg.bessMWh - soc) / (etaC * DT));
         soc += gc * etaC * DT; sumChgIn += gc;
       }
       const fc = Math.min(P.solarFc[i] * cfg.solar + P.windFc[i] * cfg.wind, cfg.tx || 1e9) * (1 - cfg.loss);
-      blocks[i] = { i, d, b, h, L, S, W, txCurt, losses, delivered, solarDir, windDir, chg, gc, dis, disElig, mkt, mAv, gridToLoad, surplusExcl, soc, socClean, fc, P_b, price: P.price[i],
+      blocks[i] = { i, d, b, h, L, S, W, sShare, txCurt, losses, delivered, solarDir, windDir, chg, gc, dis, disElig, mkt, mAv, gridToLoad, surplusExcl, soc, socClean, fc, P_b, price: P.price[i],
         ev: events.some(e => i >= e.from && i < e.to) };
     }
     const hours = [];
@@ -139,7 +139,7 @@ const SIM = (() => {
     hours.forEach(o => {
       if (o.status === 'INCOMPLETE') return;
       const stamp = '202610' + pad(o.d + 1) + pad(o.h);
-      [['SOL', 'KTC-SOL-01', o.solar], ['WND', 'KTC-WND-02', o.wind], ['BES', 'JMN-BES-01', o.bessElig], ['MKT', 'GTAM-TRD-01', o.mkt]].forEach(([c, asset, q]) => {
+      [['SOL', 'KTC-SOL-01', o.solar], ['WND', 'KTC-WND-02', o.wind], ['ST', 'Stored solar/wind via JMN-BES-01', o.bessElig], ['MKT', 'GTAM-TRD-01', o.mkt]].forEach(([c, asset, q]) => {
         if (q > 0.005) certs.push({ serial: 'SIM-GC-' + c + '-' + stamp, asset, d: o.d, h: o.h, mwh: q, pending: o.status === 'PROVISIONAL', beneficiary: CONTRACT.beneficiary });
       });
     });
@@ -154,22 +154,24 @@ const SIM = (() => {
       incomplete: hours.filter(x => x.status === 'INCOMPLETE').length, provisional: hours.filter(x => x.status === 'PROVISIONAL').length,
       solar: sum(hours, x => x.solar), wind: sum(hours, x => x.wind), bessElig: sum(hours, x => x.bessElig), bessInelig: sum(hours, x => x.bessInelig), mkt: sum(hours, x => x.mkt),
       genS: sum(hours, x => x.genS), genW: sum(hours, x => x.genW),
+      physicalMatched: sum(hours, x => x.matched), excludedMissing: sum(hours, x => x.status === 'INCOMPLETE' ? x.matched : 0), excludedPending: sum(hours, x => x.status === 'PROVISIONAL' ? x.matched : 0), nHours: hours.length,
       socStart, socEnd: soc, sumChgIn, sumDisOut, etaC, etaD
     };
-    M.status = (M.incomplete || M.provisional) ? 'PROVISIONAL' : 'CLAIM-READY';
+    M.unresolved = M.incomplete + M.provisional;
+    M.status = M.unresolved ? 'PROVISIONAL' : 'RECONCILED';
     return { blocks, hours, certs, M, cfg, events };
   }
 
-  function scoreThrough(R, dayIdx, block) {
+  function scoreThrough(R, dayIdx, block, mode) {
     const lastH = dayIdx * 24 + Math.floor((block ?? 95) / 4);
     let n = 0, dn = 0;
-    for (let H = 0; H <= lastH && H < R.hours.length; H++) { const o = R.hours[H]; dn += o.load; if (o.status === 'CLAIM_READY') n += o.matched; }
+    for (let H = 0; H <= lastH && H < R.hours.length; H++) { const o = R.hours[H]; dn += o.load; if (mode === 'estimate' || o.status === 'CLAIM_READY') n += o.matched; }
     return dn ? n / dn : 0;
   }
   const below = (R, tier) => R.hours.filter(h => h.cfe * 100 < tier).length;
 
   /* ---------- sizing: scale reference portfolio until target is met ---------- */
-  const REF = { solar: 260, wind: 180, bessMW: 125, bessMWh: 550, mkt: 20, loss: 0.035, tx: 1e9, rte: 0.88 };
+  const REF = { solar: 420, wind: 90, bessMW: 250, bessMWh: 1000, mkt: 20, loss: 0.035, tx: 1e9, rte: 0.88 };
   function portfolioFor(k, ls) { return { ...REF, solar: Math.round(REF.solar * k * ls / 5) * 5, wind: Math.round(REF.wind * k * ls / 5) * 5, bessMW: Math.round(REF.bessMW * k * ls / 5) * 5, bessMWh: Math.round(REF.bessMWh * k * ls / 25) * 25, mkt: Math.round(REF.mkt * ls / 5) * 5, loadScale: ls }; }
   function size(P, loadMW, shape, tierPct) {
     const ls = loadMW / 100;
@@ -200,7 +202,7 @@ const SIM = (() => {
   }
 
   function serviceCredit(score, tier, rule) {
-    rule = rule || { perPoint: 2, cap: 20 };
+    rule = rule || { perPoint: 2, cap: 10, base: 'monthly electricity bill' };
     const shortfall = Math.max(0, tier - score * 100);
     return { shortfallPts: shortfall, creditPct: Math.min(rule.cap, shortfall * rule.perPoint), rule, illustrative: true, binding: false };
   }
@@ -217,7 +219,7 @@ const SIM = (() => {
     const base = run(P, cfg, []);
     let eA = 0;
     base.blocks.forEach(x => { eA = Math.max(eA, Math.abs(x.solarDir + x.windDir + x.dis + x.mkt + x.gridToLoad - x.L), Math.abs(x.delivered - x.solarDir - x.windDir - x.chg - x.surplusExcl)); });
-    T.push({ id: 'A', name: 'Energy balances in every 15-minute block', pass: eA < 1e-6, detail: '2,880 blocks · max imbalance ' + eA.toExponential(1) + ' MW' });
+    T.push({ id: 'A', name: 'Energy balances in every 15-minute block', pass: eA < 1e-6, detail: NB.toLocaleString('en-IN') + ' blocks · max imbalance ' + eA.toExponential(1) + ' MW' });
     const B = base.M, exp = B.socStart + B.sumChgIn * B.etaC * DT - B.sumDisOut * DT / B.etaD, eB = Math.abs(exp - B.socEnd);
     const socOk = base.blocks.every(x => x.soc >= cfg.bessMWh * 0.1 - 1e-6 && x.soc <= cfg.bessMWh * 0.95 + 1e-6);
     T.push({ id: 'B', name: 'Battery energy conserved after round-trip losses', pass: eB < 1e-6 && socOk, detail: 'SoC within 10–95% · closing error ' + eB.toExponential(1) + ' MWh' });
@@ -225,7 +227,7 @@ const SIM = (() => {
     const dup = reg.assign(base.certs[0].serial, 'SIM-BUYER-OTHER');
     T.push({ id: 'C', name: 'The same certificate cannot be claimed twice', pass: !dup.ok, detail: base.certs[0].serial + ' re-assignment → rejected (' + dup.reason + ')' });
     let eD = 0; base.hours.forEach(o => { eD = Math.max(eD, Math.abs(o.matched - (o.load - o.grid - o.bessInelig))); });
-    T.push({ id: 'D', name: 'Ordinary grid supply adds zero CFE', pass: eD < 1e-6, detail: 'matched = load − grid − untracked storage, all 720 hours' });
+    T.push({ id: 'D', name: 'Ordinary grid supply adds zero CFE', pass: eD < 1e-6, detail: 'matched = load − grid − untracked storage, all ' + base.hours.length + ' hours' });
     const e = run(P, cfg, [{ k: 'meterOutage', from: 13 * BPD + 8, to: 13 * BPD + 32 }]);
     const nE = e.hours.filter(x => x.status === 'INCOMPLETE').length;
     T.push({ id: 'E', name: 'Missing meter data is flagged, never counted as clean', pass: nE === 6 && e.M.scoreComplete < base.M.scoreComplete && e.M.status === 'PROVISIONAL', detail: nE + ' hours INCOMPLETE · month PROVISIONAL' });

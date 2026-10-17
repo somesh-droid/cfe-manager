@@ -33,7 +33,7 @@ function eventMessages(e) {
     case 'windLull':
     case 'badWeek':
       L.push(M(t0, 'SUP', 'CFE', 'Intraday forecast update from wind QCA', 'wind −65% for ' + fromT + '–' + toT, 'data'));
-      L.push(M(t0 + 2, 'CFE', 'CFE', 'Re-optimised · clean supply ' + f0(s.act0 - s.act) + ' MWh below plan', 'merit order: battery → green blocks → grid at 0 CFE', 'note'));
+      L.push(M(t0 + 2, 'CFE', 'CFE', 'Re-planned · clean supply ' + f0(s.act0 - s.act) + ' MWh below plan', 'merit order: battery → green blocks → grid at 0 CFE', 'note'));
       L.push(M(t0 + 4, 'CFE', 'BESS', 'Discharge plan: up to ' + cfg.bessMW + ' MW from ' + fromT, 'signed instruction ' + tag(d, 'BI-0412')));
       L.push(M(t0 + 6, 'BESS', 'CFE', 'Acknowledged', 'within SoC 10–95%', 'ack'));
       L.push(M(t0 + 8, 'CFE', 'TM', 'Green block request, up to ' + cfg.mkt + ' MW', fromT + '–' + toT + ' · within bid limit'));
@@ -48,11 +48,11 @@ function eventMessages(e) {
       break;
     case 'bessOut':
       L.push(M(t0, 'BESS', 'CFE', 'Forced outage: inverter trip', 'unavailable until 06:00', 'data'));
-      L.push(M(t0 + 1, 'CFE', 'CFE', 'Battery removed from plan · re-optimised', 'lost ' + f0(s.bess0 - s.bess) + ' MWh of clean discharge', 'note'));
+      L.push(M(t0 + 1, 'CFE', 'CFE', 'Battery removed from plan · re-planned', 'lost ' + f0(s.bess0 - s.bess) + ' MWh of clean discharge', 'note'));
       L.push(M(t0 + 3, 'CFE', 'TM', 'Extra green block request', fromT + '–' + toT + ' · mandate cap ' + cfg.mkt + ' MW'));
       L.push(M(t0 + 6, 'CFE', 'SLDC', 'Revision: battery injection withdrawn', 'rev R3'));
       L.push(M(t0 + 8, 'TM', 'IEX', 'Orders placed', 'intraday'));
-      L.push(M(t0 + 10, 'CFE', 'CUST', 'Incident notice: night at ' + pc(s.cfe) + ' CFE', 'servers on normal supply · month ' + score));
+      L.push(M(t0 + 10, 'CFE', 'CUST', 'Incident notice: night at ' + pc(s.cfe) + ' CFE', 'uncovered demand stays on normal grid supply · month ' + score));
       L.push(M(t0 + 20, 'SLDC', 'CFE', 'Revision accepted', '', 'ack'));
       L.push(M(t0 + 25, 'IEX', 'TM', 'Matched ' + f0(s.mkt) + ' MWh', '', 'ack'));
       L.push(M(t0 + 26, 'TM', 'CFE', 'Trade confirmation', tag(d, 'IEX-7744'), 'ack'));
@@ -61,7 +61,7 @@ function eventMessages(e) {
       break;
     case 'loadRamp':
       L.push(M(t0, 'CUST', 'CFE', 'Load notice: +20 MW AI training run', fromT + '–' + toT + ' · optional flexibility feed', 'data'));
-      L.push(M(t0 + 3, 'CFE', 'CFE', 'Re-optimised for higher load', '+' + f0(20 * s.hours) + ' MWh to cover', 'note'));
+      L.push(M(t0 + 3, 'CFE', 'CFE', 'Re-planned for higher load', '+' + f0(20 * s.hours) + ' MWh to cover', 'note'));
       L.push(M(t0 + 5, 'CFE', 'BESS', 'Raise discharge plan from ' + fromT, ''));
       L.push(M(t0 + 7, 'BESS', 'CFE', 'Acknowledged', '', 'ack'));
       L.push(M(t0 + 9, 'CFE', 'TM', 'Green block request for added load', 'up to ' + cfg.mkt + ' MW'));
@@ -73,7 +73,7 @@ function eventMessages(e) {
       break;
     case 'solarDown':
       L.push(M(t0, 'SUP', 'CFE', 'Intraday forecast update: cloud', 'solar −40% ' + fromT + '–' + toT, 'data'));
-      L.push(M(t0 + 2, 'CFE', 'CFE', 'Re-optimised · less surplus to store', 'battery charge target lowered', 'note'));
+      L.push(M(t0 + 2, 'CFE', 'CFE', 'Re-planned · less surplus to store', 'battery charge target lowered', 'note'));
       L.push(M(t0 + 4, 'CFE', 'BESS', 'Revised charge plan', ''));
       L.push(M(t0 + 6, 'BESS', 'CFE', 'Acknowledged', '', 'ack'));
       L.push(M(t0 + 10, 'CFE', 'SLDC', 'Revised injection schedule', 'rev R2'));
@@ -90,7 +90,7 @@ function eventMessages(e) {
       break;
     case 'txConstraint':
       L.push(M(t0, 'SLDC', 'CFE', 'Constraint: Kutch evacuation 150 MW', fromT + '–' + toT, 'data'));
-      L.push(M(t0 + 3, 'CFE', 'CFE', 'Re-optimised inside deliverable limit', f0(s.curt) + ' MWh cannot be delivered', 'note'));
+      L.push(M(t0 + 3, 'CFE', 'CFE', 'Re-planned inside deliverable limit', f0(s.curt) + ' MWh cannot be delivered', 'note'));
       L.push(M(t0 + 6, 'CFE', 'SUP', 'Curtailment schedule', 'per PPA curtailment clause'));
       L.push(M(t0 + 12, 'SUP', 'CFE', 'Acknowledged', '', 'ack'));
       L.push(M(t0 + 15, 'CFE', 'SLDC', 'Revised schedule within limit', 'rev R2'));
@@ -112,7 +112,7 @@ function eventMessages(e) {
       L.push(M(t0, 'CFE', 'REG', 'Issuance request', 'validated meter data attached'));
       L.push(M(t0 + 30, 'REG', 'CFE', 'Backlog: issuance delayed', 'three days of certificates pending', 'ack'));
       L.push(M(t0 + 32, 'CFE', 'CFE', 'Matches held provisional', 'no claim published until cancelled', 'note'));
-      L.push(M(t0 + 40, 'CFE', 'CUST', 'Statement will show provisional hours', 'evidence-complete ' + score));
+      L.push(M(t0 + 40, 'CFE', 'CUST', 'Statement will show unresolved hours', 'evidence reconciled ' + score));
       break;
   }
   return L.sort((a, b) => a.t - b.t);
@@ -122,7 +122,7 @@ function dailyCycle(d) {
   const H = R.hours.slice(d * 24, d * 24 + 24), mkt = H.reduce((a, o) => a + o.mkt, 0), elig = H.reduce((a, o) => a + o.matched, 0);
   return [
     M(D - 870, 'SUP', 'CFE', 'Availability + generation forecast', 'solar, wind, QCA', 'data'), M(D - 860, 'CUST', 'CFE', 'Load forecast', 'read-only meter / EMS feed', 'data'),
-    M(D - 850, 'CFE', 'CFE', 'Day-ahead optimisation', '96 blocks · merit order', 'note'), M(D - 840, 'CFE', 'TM', 'G-DAM bid requests', 'within mandate limits'),
+    M(D - 850, 'CFE', 'CFE', 'Day-ahead plan', '96 blocks · rule-based merit order', 'note'), M(D - 840, 'CFE', 'TM', 'G-DAM bid requests', 'within mandate limits'),
     M(D - 830, 'TM', 'IEX', 'Bids submitted', 'green day-ahead market'), M(D - 660, 'IEX', 'TM', 'Cleared ' + f0(mkt) + ' MWh', '', 'ack'), M(D - 655, 'TM', 'CFE', 'Trade confirmations', '', 'ack'),
     M(D - 600, 'CFE', 'SLDC', 'Day-ahead schedules', 'injection + drawal'), M(D - 360, 'SLDC', 'CFE', 'Schedules accepted', '', 'ack'),
     M(D - 350, 'CFE', 'BESS', 'Charge 10:00–16:00, discharge from 18:00', 'signed plan'), M(D - 345, 'BESS', 'CFE', 'Acknowledged', '', 'ack'),
@@ -203,7 +203,7 @@ V.orchestration = () => {
         <li><b>Surplus charges the battery</b>; the charge source is logged so attributes follow the energy.</li>
         <li><b>Battery discharges</b> into deficits; only the clean-charged share earns certificates.</li>
         <li><b>Green exchange blocks</b> are requested through the trading member, within the bid limit.</li>
-        <li><b>Grid supply</b> covers anything left. Servers never wait for clean power; these MWh count at zero.</li>
+        <li><b>Grid supply</b> covers anything left; these MWh count at zero. The model assumes grid fallback; real reliability depends on the customer\u2019s electrical infrastructure and backup.</li>
         <li>Surplus that cannot be stored is <b>excluded</b> from the score, never banked silently.</li>
       </ol></div>
     <div class="panel"><div class="ph"><h3>15-minute schedule</h3><span class="sub">${sel ? 'first 12 hours of the window' : '18:00–24:00'} · MW</span></div>
@@ -246,7 +246,7 @@ V.suppliers = () => {
   ];
   let ape = 0, n = 0; R.hours.forEach(o => { if (o.fcClean > 5) { ape += Math.abs(o.actClean - o.fcClean) / o.fcClean; n++; } });
   return `
-  <div class="phead"><div><div class="eyebrow">CFE Manager · Suppliers</div><h1>Contracted portfolio, not an open marketplace</h1><p class="lead">Supply enters the optimiser only after it clears every gate. Each stage has an owner and a document.</p></div><button class="btn" data-role="supplier" data-view="s_onboard">Open supplier onboarding</button></div>
+  <div class="phead"><div><div class="eyebrow">CFE Manager · Suppliers</div><h1>Contracted portfolio, not an open marketplace</h1><p class="lead">Supply enters the dispatch engine only after it clears every gate. Each stage has an owner and a document.</p></div><button class="btn" data-role="supplier" data-view="s_onboard">Open supplier onboarding</button></div>
   <div class="kanban" style="grid-template-columns:repeat(7,minmax(150px,1fr))">${[...SUP_STAGES, 'Rejected'].map(st => { const xs = all.filter(x => x.stage === st); return `<div class="kcol" ${st === 'Rejected' ? 'style="background:#FFF8F7"' : ''}><div class="kh"><span class="eyebrow">${st}</span><span class="small muted">${xs.length}</span></div>${xs.map(x => `<button class="card ${x.id === a.id ? 'sel' : ''} ${x.isNew ? 'new' : ''}" data-act="sup" data-id="${x.id}"><span class="t">${sw(x.c)}${esc(x.name)}</span><span class="m mono">${x.id}</span><span class="m">${typeof x.cap === 'function' ? x.cap() : x.cap} · ${x.state}</span></button>`).join('')}</div>`; }).join('')}</div>
   <div class="g12">
     <div class="panel"><div class="ph"><h3>${esc(a.name)}</h3>${chk.eligible ? chip(a.stage, 'good') : chip(a.stage === 'Rejected' ? 'Rejected' : 'Gate open', a.stage === 'Rejected' ? 'crit' : 'warn')}</div>
@@ -270,49 +270,6 @@ V.contracts = () => `
     <div class="panel"><div class="ph"><h3>Service schedule</h3>${chip('Method v1.0', 'neutral')}</div>
       <dl class="kv"><dt>Metric</dt><dd>Monthly load-weighted share of hourly-matched eligible MWh</dd><dt>Floor</dt><dd>CFE${state.tier}</dd><dt>Geography</dt><dd>Same state (Gujarat)</dd><dt>Storage</dt><dd>Charge source tracked; losses applied</dd><dt>Excluded</dt><dd>Grid residual, untracked storage, surplus, unissued certificates</dd><dt>Data gaps</dt><dd>Counted as unmatched until reconciled</dd><dt>Remedy</dt><dd>Service credit on verified month only, capped (illustrative 2% of fee per point, max 20%)</dd><dt>Not promised</dt><dd>90% every hour; server uptime; future regulatory compliance</dd></dl></div>
   </div>`;
-
-V.evidence = () => {
-  const d = state.day, h = state.hourSel, o = R.hours[d * 24 + h];
-  const certs = R.certs.filter(c => c.d === d && c.h === h);
-  const sched = o.fcClean, dev = o.actClean - sched;
-  const links = [
-    { t: 'Generation metered', who: 'Generator interface meters', st: 'pass', d: `SOL ${f1(o.genS)} · WND ${f1(o.genW)} MWh · uploaded D+1 08:00` },
-    { t: 'Scheduled and settled', who: 'SLDC energy account; exchange obligation', st: 'pass', d: `scheduled ${f1(sched)} · actual ${f1(o.actClean)} MWh (${dev >= 0 ? '+' : ''}${f1(dev)})${o.mkt > 0.05 ? ' · exchange ' + f1(o.mkt) + ' MWh confirmed' : ''}` },
-    { t: 'Customer drawal metered', who: 'Site meter SEM-JMN-DC-01', st: o.status === 'INCOMPLETE' ? 'fail' : 'pass', d: o.status === 'INCOMPLETE' ? 'feed missing · counted as unmatched' : `${f1(o.load)} MWh drawn` },
-    { t: 'Certificates cancelled', who: 'Accredited GC registry', st: o.status === 'INCOMPLETE' ? 'fail' : o.status === 'PROVISIONAL' ? 'wait' : 'pass', d: o.status === 'INCOMPLETE' ? 'not issued' : `${certs.length} serial${certs.length === 1 ? '' : 's'} · ${f1(certs.reduce((a, c) => a + c.mwh, 0))} MWh ${o.status === 'PROVISIONAL' ? 'pending' : 'to ' + SIM.CONTRACT.beneficiary}` },
-    { t: 'Independently verified', who: 'Claims verifier, month-end', st: 'wait', d: 'sampling at month-end · opinion not issued in simulation' }
-  ];
-  const ic = s => s === 'pass' ? '✓' : s === 'fail' ? '✕' : '…';
-  const meteredLoad = R.hours.filter(x => x.status !== 'INCOMPLETE').reduce((a, x) => a + x.load, 0);
-  const cancelled = R.hours.filter(x => x.status === 'CLAIM_READY').reduce((a, x) => a + x.matched, 0);
-  return `
-  <div class="phead"><div><div class="eyebrow">CFE Manager · Evidence</div><h1>Proving ${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00 on ${dayLabel(d)}</h1><p class="lead">A clean hour counts only when five independent records agree. Click any cell in the month below to inspect another hour.</p></div>
-    <div class="row"><span class="big" style="font-size:34px;color:${o.cfe >= .9 ? 'var(--good)' : 'var(--crit)'}">${pc(o.cfe)}</span><span class="small muted">eligible share<br>of ${f1(o.load)} MWh</span></div></div>
-  <div class="chain">${links.map((l, i) => `<div class="link ${l.st}"><span class="eyebrow">Step ${i + 1}</span><span class="st"><span class="ic">${ic(l.st)}</span>${l.t}</span><span class="lw">${l.who}</span><span class="d">${l.d}</span></div>`).join('')}</div>
-  <div class="ledgers">
-    <div class="ledger"><h4>${sw('var(--ink-2)')}Physical ledger</h4><p class="small muted" style="margin-bottom:6px">What flowed, MWh</p>
-      ${[['Solar generated', o.genS], ['Wind generated', o.genW], ['Transmission losses', o.losses], ['Battery charged', o.charge + o.gridCharge], ['Battery discharged', o.bessElig + o.bessInelig], ['Exchange blocks', o.mkt], ['Grid residual', o.grid], ['Site load', o.load]].map(([k, v]) => `<div class="row2"><span>${k}</span><span>${f1(v)}</span></div>`).join('')}</div>
-    <div class="ledger"><h4>${sw('var(--r-trader)')}Settlement ledger</h4><p class="small muted" style="margin-bottom:6px">Who bills whom · values with finance</p>
-      ${[['Solar PPA line', 'PPA-KTC-SOL-01 · ' + f1(o.solar) + ' MWh'], ['Wind PPA line', 'PPA-KTC-WND-02 · ' + f1(o.wind) + ' MWh'], ['Storage tolling', 'TOLL-JMN-01 · availability'], ['Exchange obligation', o.mkt > 0.05 ? 'SIM-IEX-OBL · ' + f1(o.mkt) + ' MWh' : '—'], ['DISCOM residual', o.grid > 0.05 ? f1(o.grid) + ' MWh' : '—'], ['Customer statement', 'CF90-STMT-OCT26']].map(([k, v]) => `<div class="row2"><span>${k}</span><span style="font-size:11.5px">${v}</span></div>`).join('')}</div>
-    <div class="ledger"><h4>${sw('var(--r-verifier)')}Attribute ledger</h4><p class="small muted" style="margin-bottom:6px">What can be claimed, MWh</p>
-      ${[['Solar, cancelled', o.solar], ['Wind, cancelled', o.wind], ['Battery, clean share', o.bessElig], ['Exchange blocks', o.mkt], ['Battery, grid share (0)', o.bessInelig], ['Grid residual (0)', o.grid]].map(([k, v]) => `<div class="row2"><span>${k}</span><span>${f1(v)}</span></div>`).join('')}
-      <div class="row2" style="font-weight:600"><span>Matched / load</span><span>${f1(o.matched)} / ${f1(o.load)}</span></div></div>
-  </div>
-  <div class="g12">
-    <div class="panel"><div class="ph"><h3>Certificate trail</h3><span class="sub">synthetic serials</span></div>
-      <div class="tw"><table><thead><tr><th>Serial</th><th>Asset</th><th class="r">MWh</th><th>Status</th></tr></thead><tbody>
-      ${certs.map(c => `<tr><td class="mono small">${c.serial}</td><td class="mono small">${c.asset}</td><td class="r num">${f1(c.mwh)}</td><td>${c.pending ? chip('Pending', 'warn') : chip('Cancelled to buyer', 'good')}</td></tr>`).join('') || `<tr><td colspan="4" class="muted">${o.status === 'INCOMPLETE' ? 'No certificates: meter data missing.' : 'No eligible supply this hour.'}</td></tr>`}
-      ${o.grid > 0.05 ? `<tr><td class="small muted">no certificate</td><td class="small muted">DISCOM residual</td><td class="r num">${f1(o.grid)}</td><td>${chip('0 CFE', 'crit')}</td></tr>` : ''}
-      </tbody></table></div></div>
-    <div class="panel"><div class="ph"><h3>Month evidence funnel</h3><span class="sub">October · MWh</span></div>
-      <div class="stack">
-      ${[['Load metered', meteredLoad, R.M.load, 'var(--ink-2)'], ['Matched eligible supply', R.hours.filter(x => x.status !== 'INCOMPLETE').reduce((a, x) => a + x.matched, 0), R.M.load, '#0E7568'], ['Certificates cancelled to buyer', cancelled, R.M.load, 'var(--r-verifier)'], ['Independently verified', 0, R.M.load, 'var(--faint)']].map(([k, v, t, c]) => `<div style="display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:4px 10px;align-items:center"><span class="small">${k}</span><span class="num r" style="text-align:right;font-weight:600">${f0(v)}</span><div class="bar" style="grid-column:1/-1"><span style="width:${v / t * 100}%;background:${c}"></span></div></div>`).join('')}
-      <div class="row" style="justify-content:space-between;margin-top:4px"><span>Evidence-complete score</span><span class="big" style="font-size:28px">${pc(R.M.scoreComplete)}</span></div>
-      ${R.M.scoreNaive - R.M.scoreComplete > 0.0005 ? `<div class="callout crit">An unchecked dashboard would report <b>${pc(R.M.scoreNaive)}</b> by counting grid-charged storage and missing meter data. CF90 rejects that number.</div>` : ''}
-      </div></div>
-  </div>
-  <div class="panel"><div class="ph"><h3>Every hour of October</h3>${heatLegend()}</div>${heatSVG(R, d, h)}</div>`;
-};
 
 V.ecosystem = () => {
   const e = ECO.find(x => x.id === state.ecoSel) || ECO[0];
@@ -341,7 +298,7 @@ V.ecosystem = () => {
     <div class="panel"><div class="ph"><h3>Coordination calendar</h3><span class="sub">for one delivery day D</span></div>
       <div class="tw"><table><thead><tr><th>When</th><th>Between</th><th>What</th></tr></thead><tbody>${CALENDAR.map(([a, b, c]) => `<tr><td class="num" style="font-weight:600">${a}</td><td class="small">${b}</td><td class="wrap small">${c}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="stack">
-      <div class="panel"><div class="ph"><h3>Captive compliance · Kutch Solar SPV</h3>${chip('On track', 'good')}</div>
+      <div class="panel"><div class="ph"><h3>Captive compliance · Kutch Solar SPV</h3>${chip('Assumed eligibility', 'warn')}</div>
         <p class="small muted" style="margin-bottom:10px">Annual test under the Electricity (Amendment) Rules, 2026. Illustrative figures; counsel confirms the structure.</p>
         ${[['Captive users’ ownership', 26.4, 26, '% of equity'], ['Captive consumption, FY to date', 58.2, 51, '% of generation']].map(([k, v, th, u]) => `<div style="display:grid;gap:4px;margin-bottom:10px"><div class="row" style="justify-content:space-between"><span class="small">${k}</span><span class="num" style="font-weight:600">${v}${u.startsWith('%') ? '%' : ''} <span class="muted small">min ${th}%</span></span></div><div class="meter"><div class="f" style="width:${v}%;background:#0E7568"></div><div class="tk" style="left:${th}%"></div></div></div>`).join('')}
         <div class="callout warn">Alert rule: if forecast consumption falls below 54% by Q3, rebalance offtake. If status fails, CSS and additional surcharge fall on the party named in the SHA.</div></div>
@@ -362,7 +319,7 @@ V.feasibility = () => {
         <div class="fld"><label for="fz-state">Site state</label><select id="fz-state">${STATES.map(s => `<option ${s === F.state ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="fld"><label for="fz-mw">Average load, MW</label><input type="number" id="fz-mw" min="5" max="500" value="${F.mw}"></div>
         <div class="fld"><label for="fz-shape">Load shape</label><select id="fz-shape"><option value="flat" ${F.shape === 'flat' ? 'selected' : ''}>Flat 24/7 (data centre)</option><option value="day" ${F.shape === 'day' ? 'selected' : ''}>Day-heavy (industrial)</option></select></div>
-        <div class="fld"><label for="fz-tier">Target</label><select id="fz-tier">${[70, 90, 95].map(t => `<option value="${t}" ${+F.tier === t ? 'selected' : ''}>CFE${t}</option>`).join('')}</select></div>
+        <div class="fld"><label for="fz-tier">Target</label><select id="fz-tier">${[70, 80, 90, 95].map(t => `<option value="${t}" ${+F.tier === t ? 'selected' : ''}>CFE${t}</option>`).join('')}</select></div>
       </div>
       <div class="wnav"><span class="small muted">Sizing runs about 15 month-long simulations.</span><button class="btn primary" data-act="runFeas">Assess request</button></div></div>
     <div class="panel">${res ? feasResult(res) : '<div class="ph"><h3>Result</h3></div><p class="muted">Run an assessment to see the sized portfolio, the state gates and the entry route.</p>'}</div>
@@ -393,7 +350,7 @@ function feasResult(r) {
     <div class="g2" style="gap:12px">
       <div><div class="eyebrow" style="margin-bottom:6px">Sized portfolio${r.F.state !== 'Gujarat' ? ' (Gujarat-shape proxy)' : ''}</div>
         <div class="tw"><table><tbody>
-          <tr><td>${sw('var(--solar)')}Solar</td><td class="r num">${c.solar} MWp</td></tr><tr><td>${sw('var(--wind)')}Wind</td><td class="r num">${c.wind} MW</td></tr>
+          <tr><td>${sw('var(--solar)')}Solar</td><td class="r num">${c.solar} MWac</td></tr><tr><td>${sw('var(--wind)')}Wind</td><td class="r num">${c.wind} MW</td></tr>
           <tr><td>${sw('var(--bess)')}Battery</td><td class="r num">${c.bessMW} MW / ${c.bessMWh} MWh</td></tr><tr><td>${sw('var(--mkt)')}Exchange block cap</td><td class="r num">${c.mkt} MW</td></tr>
           <tr><td style="font-weight:600">Backtest score</td><td class="r num" style="font-weight:600">${pc(r.z.score)}</td></tr>
         </tbody></table></div></div>
@@ -416,7 +373,7 @@ V.checks = () => {
       </tbody></table></div></div>
       <div class="panel"><div class="ph"><h3>Model limits</h3></div><ul class="plain small muted">
         <li>Synthetic Gujarat-shaped profiles with a fixed seed; not plant or site data.</li>
-        <li>Rule-based merit-order dispatch with logged decisions, not a solved optimisation.</li>
+        <li>A dispatch and sizing prototype: rule-based merit-order dispatch with logged decisions. No optimisation model is connected yet.</li><li>Sizing uses one illustrative month. Full-year and adverse-weather testing is required before offering a monthly guarantee.</li><li>Passing 10 of 10 internal tests does not establish commercial feasibility, regulatory compliance or independent assurance.</li>
         <li>No tariffs or margins. The price index is illustrative; economics sit with the finance model.</li>
         <li>Certificate serials, trade IDs and parties are invented. No registry, exchange or SLDC is connected.</li>
         <li>${SIM.ENGINE_VERSION} · ${SIM.DATA_VERSION}</li>

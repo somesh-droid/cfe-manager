@@ -1,14 +1,14 @@
 /* ===================== ONBOARDING JOURNEYS (per portal) ===================== */
 const JOURNEYS = {
   customer: {
-    side: 'Customer', owner: 'Key account manager', ttl: 'About 6–12 months to go-live, with shadow mode before any commitment',
+    side: 'Customer', owner: 'Key account manager', ttl: 'Existing assets, wrapped and managed: about 6–12 months. Needing new-build assets: about 18–36 months. Shadow mode comes before any commitment',
     title: 'Get hourly clean energy for your site', lead: 'A named-account journey, not a self-serve checkout. Each stage tells you what you do, what we do, and which documents unlock the next step.',
     why: ['One counterparty for supply, trading, open access and certificates', 'A monthly score your sustainability team can defend, checked by an independent verifier', 'No change to reliability: the grid and your backup keep the site running', 'We see meter data only, never workloads or servers'],
     stages: [
       { t: 'Register and verify', you: 'Create the account, verify the company and add your buying team.', we: 'KYC check; assign a key account manager.', docs: ['Certificate of incorporation', 'GST registration', 'Letter of authority for power procurement'], time: '1–2 days' },
       { t: 'Share meter data', you: 'Sign the NDA and data schedule. Upload 12 months of 15-minute interval data, or grant read-only meter access.', we: 'Check completeness. Gaps are flagged, never filled in.', docs: ['Mutual NDA and data schedule', 'Interval data export (CSV)', 'Single-line diagram of the site connection'], time: '1 week', link: ['c_onboard', 1, 'Open the meter-data upload'] },
       { t: 'Hourly diagnostic', you: 'Tell us about current supply contracts and your goals.', we: 'Measure your real hourly match, your weakest hours and the gap to target.', docs: ['Summary of current PPAs / RECs', 'Sustainability target statement'], time: '4–8 weeks', link: ['c_onboard', 3, 'Open the diagnostic'] },
-      { t: 'Proposal and term sheet', you: 'Choose a tier and review the portfolio and non-price terms.', we: 'Size and back-test a portfolio per tier; issue an indicative term sheet.', docs: ['Signed term sheet (non-binding)'], time: '2–4 weeks', link: ['c_onboard', 4, 'Open the proposal'] },
+      { t: 'Proposal and term sheet', you: 'Choose a tier and review the portfolio and non-price terms.', we: 'Size a portfolio per tier on an illustrative month; issue an indicative term sheet. Full-year testing follows before any guarantee.', docs: ['Signed term sheet (non-binding)'], time: '2–4 weeks', link: ['c_onboard', 4, 'Open the proposal'] },
       { t: 'Buying-committee diligence', you: 'Procurement, sustainability, facilities, finance, legal and cyber each sign off.', we: 'Answer diligence questions, run the credit check and the security review.', docs: ['Credit and collateral pack', 'Security questionnaire', 'Facilities no-impact confirmation'], time: '6–12 weeks' },
       { t: 'Contract and approvals', you: 'Sign the master services agreement and authorise the open-access filing.', we: 'File green open access, appoint the verifier, set up a captive SPV if chosen.', docs: ['Master CFE Services Agreement', 'Open-access filing authority', 'Verifier engagement letter'], time: '2–6 months' },
       { t: 'Shadow mode', you: 'Review weekly hourly scores. No service credits apply yet.', we: 'Run live dispatch and evidence on your meter to prove the method.', docs: ['Shadow-mode acceptance note'], time: '1–3 months', link: ['c_service', null, 'See the live service view'] },
@@ -16,7 +16,7 @@ const JOURNEYS = {
     ]
   },
   supplier: {
-    side: 'Supplier', owner: 'Procurement lead', ttl: 'About 3–6 months from application to first scheduled delivery',
+    side: 'Supplier', owner: 'Procurement lead', ttl: 'Operating asset: about 3–6 months to first scheduled delivery. New-build asset: about 18–30 months',
     title: 'Supply the CF90 portfolio', lead: 'For solar, wind and storage owners in a state we serve. We buy energy and its certificates together, under long-term contracts.',
     why: ['10–15 year offtake for energy plus attributes', 'Agreed delivery profile and curtailment terms', 'Your plant stays yours: schedules go through your coordinator', 'Monthly settlement statement and certificate record'],
     stages: [

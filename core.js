@@ -1,7 +1,7 @@
 /* ===================== CORE: data, state, helpers ===================== */
 const $ = id => document.getElementById(id);
 const P = SIM.genProfiles(2026);
-const LIVE_CFG = { ...SIM.REF, solar: 300, wind: 210, bessMW: 140, bessMWh: 650, mkt: 20 };
+const LIVE_CFG = { ...SIM.REF }; // financial-case portfolio: 420 MWac solar, 90 MW wind, 250 MW / 1,000 MWh storage
 const BPD = 96;
 
 const f0 = n => Math.round(n).toLocaleString('en-IN');
@@ -18,16 +18,16 @@ const kpi = (l, v, s = '', tone = '') => `<div class="kpi ${tone ? 'tone-' + ton
 
 /* ---------- reference data (illustrative) ---------- */
 const ASSETS = [
-  { id: 'KTC-SOL-01', name: 'Kutch Solar Park', owner: 'Reliance affiliate SPV', tech: 'Solar PV', cap: () => state.cfg.solar + ' MWp', state: 'Gujarat', district: 'Kutch', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Monitor', contract: 'Affiliate PPA, energy + attributes, arm’s length', c: 'var(--solar)' },
+  { id: 'KTC-SOL-01', name: 'Kutch Solar Park', owner: 'Reliance affiliate SPV', tech: 'Solar PV', cap: () => state.cfg.solar + ' MWac', state: 'Gujarat', district: 'Kutch', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Monitor', contract: 'Affiliate PPA, energy + attributes, arm’s length', c: 'var(--solar)' },
   { id: 'KTC-WND-02', name: 'Kutch Wind Farm', owner: 'Third-party IPP', tech: 'Wind', cap: () => state.cfg.wind + ' MW', state: 'Gujarat', district: 'Kutch', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Monitor', contract: '15-yr PPA, energy + attributes + data rights', c: 'var(--wind)' },
   { id: 'JMN-BES-01', name: 'Jamnagar Battery', owner: 'Storage operator', tech: 'BESS', cap: () => state.cfg.bessMW + ' MW / ' + state.cfg.bessMWh + ' MWh', state: 'Gujarat', district: 'Jamnagar', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Monitor', contract: 'Tolling: availability, SoC limits, cycling cap', c: 'var(--bess)' },
   { id: 'GTAM-TRD-01', name: 'Green exchange blocks', owner: 'Licensed trading member', tech: 'Exchange (G-DAM / G-TAM)', cap: () => 'up to ' + state.cfg.mkt + ' MW', state: 'Gujarat', district: '—', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Monitor', contract: 'Trading mandate, agency basis', c: 'var(--mkt)' },
-  { id: 'KTC-SOL-03', name: 'Kutch Solar Phase 3', owner: 'Reliance affiliate SPV', tech: 'Solar PV', cap: () => '150 MWp', state: 'Gujarat', district: 'Kutch', cod: 0, rights: 1, attrExclusive: 1, meter: 0, sched: 0, stage: 'Negotiate', contract: 'Term sheet; COD pending', c: 'var(--solar)' },
+  { id: 'KTC-SOL-03', name: 'Kutch Solar Phase 3', owner: 'Reliance affiliate SPV', tech: 'Solar PV', cap: () => '150 MWac', state: 'Gujarat', district: 'Kutch', cod: 0, rights: 1, attrExclusive: 1, meter: 0, sched: 0, stage: 'Negotiate', contract: 'Term sheet; COD pending', c: 'var(--solar)' },
   { id: 'BHJ-WND-05', name: 'Bhuj Wind', owner: 'Third-party IPP', tech: 'Wind', cap: () => '90 MW', state: 'Gujarat', district: 'Kutch', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Simulate', contract: '12-month backtest running', c: 'var(--wind)' },
   { id: 'MRB-HYB-02', name: 'Morbi Hybrid', owner: 'Third-party IPP', tech: 'Solar + wind', cap: () => '120 MW', state: 'Gujarat', district: 'Morbi', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Qualify', contract: 'Diligence: lender consent', c: 'var(--wind)' },
   { id: 'DHJ-BES-03', name: 'Dahej Storage', owner: 'Storage developer', tech: 'BESS', cap: () => '100 MW / 400 MWh', state: 'Gujarat', district: 'Bharuch', cod: 0, rights: 0, attrExclusive: 1, meter: 0, sched: 0, stage: 'Long-list', contract: 'RFI response received', c: 'var(--bess)' },
   { id: 'RJ-WND-07', name: 'Jaisalmer Wind', owner: 'Third-party IPP', tech: 'Wind', cap: () => '100 MW', state: 'Rajasthan', district: 'Jaisalmer', cod: 1, rights: 1, attrExclusive: 1, meter: 1, sched: 1, stage: 'Rejected', contract: '—', c: 'var(--wind)' },
-  { id: 'TP-SOL-11', name: 'Surendranagar Solar', owner: 'Third-party IPP', tech: 'Solar PV', cap: () => '80 MWp', state: 'Gujarat', district: 'Surendranagar', cod: 1, rights: 1, attrExclusive: 0, meter: 1, sched: 1, stage: 'Rejected', contract: '—', c: 'var(--solar)' }
+  { id: 'TP-SOL-11', name: 'Surendranagar Solar', owner: 'Third-party IPP', tech: 'Solar PV', cap: () => '80 MWac', state: 'Gujarat', district: 'Surendranagar', cod: 1, rights: 1, attrExclusive: 0, meter: 1, sched: 1, stage: 'Rejected', contract: '—', c: 'var(--solar)' }
 ];
 const SUP_STAGES = ['Long-list', 'Qualify', 'Simulate', 'Negotiate', 'Activate', 'Monitor'];
 
@@ -50,18 +50,18 @@ const CONTRACT_STACK = [
   { doc: 'Storage tolling · JMN-BES-01', parties: 'Storage operator ↔ CF90 Services', status: 'Signed', tone: 'good', terms: 'Dispatch rights, SoC 10–95%, cycling cap, charge-source logging, availability SLA', owner: 'Portfolio' },
   { doc: 'Trading mandate', parties: 'Licensed trading member ↔ buying entity', status: 'Signed', tone: 'good', terms: 'Agency basis, bid limits, product list (G-DAM, G-TAM), collateral, confirmations', owner: 'Trading + treasury' },
   { doc: 'Green open access approvals', parties: 'Buying entity ↔ State nodal agency / DISCOM / SLDC', status: 'Approved', tone: 'good', terms: 'Connectivity, scheduling, banking, losses and charges per current GERC GEOA regulations', owner: 'Regulatory' },
-  { doc: 'Captive SPV shareholders agreement', parties: 'Hyperscaler A ↔ Solar SPV', status: 'Under counsel review', tone: 'warn', terms: '≥26% ownership, ≥51% annual captive consumption, CSS/AS allocation if status fails', owner: 'Legal + SPV governance' },
+  { doc: 'Captive SPV shareholders agreement', parties: 'Hyperscaler A ↔ Solar SPV', status: 'Assumed · under counsel review', tone: 'warn', terms: 'Captive eligibility assumed, not established. ≥26% ownership, ≥51% annual captive consumption, CSS/AS allocation if status fails', owner: 'Legal + SPV governance' },
   { doc: 'Attribute & verification package', parties: 'GC issuer · CF90 · verifier · buyer', status: 'Signed', tone: 'good', terms: 'Issuance, exclusive cancellation to buyer, matching method, verifier access, corrections', owner: 'Sustainability assurance' },
   { doc: 'Data & security schedule', parties: 'CF90 Services ↔ Hyperscaler A', status: 'Signed', tone: 'good', terms: 'Meter data only, read-only APIs, no workload data, incident notice, audit logs', owner: 'CISO' }
 ];
 const RISK_ALLOC = [
   ['Solar / wind under-performance', 'CF90 portfolio (within service-credit cap)'], ['Battery outage', 'Storage operator (tolling SLA) → CF90'], ['Exchange non-clearing', 'CF90; bid limits per mandate'],
-  ['Transmission congestion', 'Pass-through as excluded event, logged'], ['Meter data gap', 'Party owning the meter; score provisional'], ['Captive status failure', 'Allocated in SHA (CSS/AS + carrying cost)'],
+  ['Transmission congestion', 'Pass-through as excluded event, logged'], ['Meter data gap', 'Party owning the meter; hours unresolved until backfilled'], ['Captive status failure', 'Allocated in SHA (CSS/AS + carrying cost)'],
   ['Change in law / charges', 'Re-opener and termination rights'], ['Customer load outside band', 'Customer, per deviation band']
 ];
 
 const ECO = [
-  { id: 'cust', name: 'Customers', sub: 'Data centres, AI campuses, plants', kind: 'Platform user', iface: 'Portal + read-only meter API', send: 'Monthly verified statement, advisories, evidence pack', recv: '15-min meter data, load forecast, optional flexibility envelope', cadence: 'Daily feed · monthly statement', owner: 'Key account' },
+  { id: 'cust', name: 'Customers', sub: 'Data centres, AI campuses, plants', kind: 'Platform user', iface: 'Portal + read-only meter API', send: 'Monthly statement (reconciled, then assured), advisories, evidence pack', recv: '15-min meter data, load forecast, optional flexibility envelope', cadence: 'Daily feed · monthly statement', owner: 'Key account' },
   { id: 'sup', name: 'Generators', sub: 'Solar and wind IPPs, affiliate SPVs', kind: 'Platform user', iface: 'Supplier portal + SCADA/forecast feed', send: 'Schedules, curtailment notices, PPA settlement statements', recv: 'Availability, forecasts, meter data, attribute title', cadence: 'Day-ahead + intraday', owner: 'Procurement' },
   { id: 'bess', name: 'Storage operators', sub: 'Tolled batteries', kind: 'Platform user', iface: 'Signed dispatch API (operator confirms)', send: 'Charge/discharge instructions within SoC limits', recv: 'SoC, availability, charge-source log', cadence: 'Every 15-min block', owner: 'Portfolio desk' },
   { id: 'tm', name: 'Licensed trading member', sub: 'Executes on IEX for us', kind: 'Partner', iface: 'Order requests via member terminal / API', send: 'Bid requests within mandate limits', recv: 'Trade confirmations, obligation reports', cadence: 'D-1 10:00 and intraday', owner: 'Trading lead' },
@@ -71,7 +71,7 @@ const ECO = [
   { id: 'ctu', name: 'CTUIL / GETCO (STU)', sub: 'Connectivity and network access', kind: 'Statutory', iface: 'Applications per detailed procedure', send: 'Connectivity / GNA applications', recv: 'Grants, constraints, effective dates', cadence: 'Project stage', owner: 'Grid interface lead' },
   { id: 'reg', name: 'GERC / CERC', sub: 'Regulators', kind: 'Statutory', iface: 'Compliance monitoring, petitions if needed', send: 'Filings where required', recv: 'Regulations, amendments, tariff orders', cadence: 'Per amendment', owner: 'Regulatory counsel' },
   { id: 'discom', name: 'DISCOM', sub: 'Residual and standby supply', kind: 'Statutory', iface: 'Open-access agreement, billing', send: 'Open-access schedules', recv: 'Residual supply bills, standby', cadence: 'Monthly', owner: 'Regulatory' },
-  { id: 'gc', name: 'GC issuer / registry', sub: 'Accredited granular certificates', kind: 'Partner', iface: 'Registry API: issue, transfer, cancel', send: 'Validated meter data, issuance requests', recv: 'Certificate serials, cancellation records', cadence: 'Monthly (target weekly)', owner: 'Claims lead' },
+  { id: 'gc', name: 'GC issuer / registry', sub: 'Proposed · simulated in this prototype', kind: 'Partner', iface: 'Registry API: issue, transfer, cancel', send: 'Validated meter data, issuance requests', recv: 'Certificate serials, cancellation records', cadence: 'Monthly (target weekly)', owner: 'Claims lead' },
   { id: 'ver', name: 'Independent verifier', sub: 'Claim assurance', kind: 'Partner', iface: 'Read-only ledger access', send: 'Evidence pack, method, exceptions', recv: 'Assurance opinion on monthly score', cadence: 'Monthly / quarterly', owner: 'Sustainability assurance' }
 ];
 const CALENDAR = [
@@ -177,7 +177,7 @@ function bindDayChart(root, cb) {
 }
 const bin = c => c >= 0.99 ? 4 : c >= 0.9 ? 3 : c >= 0.7 ? 2 : c >= 0.5 ? 1 : 0;
 function heatSVG(Rx, selD, selH) {
-  const cw = 34, ch = 15, ml = 50, mt = 18, W = ml + 24 * cw + 4, H = mt + 30 * ch + 4;
+  const cw = 34, ch = 15, ml = 50, mt = 18, W = ml + 24 * cw + 4, H = mt + SIM.DAYS * ch + 4;
   let g = `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#fff"/><line x1="0" y1="0" x2="0" y2="6" stroke="#B0271E" stroke-width="2"/></pattern></defs>`;
   for (let h = 0; h < 24; h += 3) g += `<text x="${ml + h * cw + 2}" y="12">${String(h).padStart(2, '0')}:00</text>`;
   Rx.hours.forEach(o => {
@@ -185,7 +185,7 @@ function heatSVG(Rx, selD, selH) {
     const fill = o.status === 'INCOMPLETE' ? 'fill="url(#hatch)"' : `fill="var(--h${bin(o.cfe)})"`;
     g += `<rect class="hc clickable" data-d="${o.d}" data-h="${o.h}" ${fill} x="${xx + 1}" y="${yy + 1}" width="${cw - 2}" height="${ch - 2}" rx="2" ${o.status === 'PROVISIONAL' ? 'stroke="#C98A12" stroke-width="1.5" stroke-dasharray="2 2"' : ''}><title>${dayLabel(o.d)} ${String(o.h).padStart(2, '0')}:00 · ${pc(o.cfe)} · ${o.status}</title></rect>`;
   });
-  for (let d = 0; d < 30; d++) if (d % 3 === 0 || d === selD) g += `<text x="${ml - 6}" y="${mt + d * ch + 11}" text-anchor="end" ${d === selD ? 'style="fill:var(--ink);font-weight:600"' : ''}>${d + 1} Oct</text>`;
+  for (let d = 0; d < SIM.DAYS; d++) if (d % 3 === 0 || d === selD) g += `<text x="${ml - 6}" y="${mt + d * ch + 11}" text-anchor="end" ${d === selD ? 'style="fill:var(--ink);font-weight:600"' : ''}>${d + 1} Oct</text>`;
   if (selD != null) g += `<rect x="${ml + selH * cw}" y="${mt + selD * ch}" width="${cw}" height="${ch}" fill="none" stroke="var(--ink)" stroke-width="2" rx="2"/>`;
   return `<div class="chart" style="overflow-x:auto"><div style="min-width:680px;position:relative"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly CFE across the month">${g}</svg><span class="wm">SIMULATED</span></div></div>`;
 }

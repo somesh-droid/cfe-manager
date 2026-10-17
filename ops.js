@@ -13,6 +13,10 @@ const ICONS = {
   feasibility: IC('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>'),
   ecosystem: IC('<circle cx="12" cy="12" r="2.5"/><circle cx="4.5" cy="5.5" r="2"/><circle cx="19.5" cy="5.5" r="2"/><circle cx="4.5" cy="18.5" r="2"/><circle cx="19.5" cy="18.5" r="2"/><path d="M6 7l4 3.5M18 7l-4 3.5M6 17l4-3.5M18 17l-4-3.5"/>'),
   checks: IC('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>'),
+  value: IC('<path d="M4 18V9M10 18V5M16 18v-6"/><path d="M3 21h18"/><path d="M19 8l2-2M21 10V6h-4"/>'),
+  commercial: IC('<path d="M7 4h10M7 9h10M9 4c4 0 4 5 0 5H7l8 11"/>'),
+  advantage: IC('<path d="M12 3l2.6 5.5 6 .8-4.4 4.2 1.1 6L12 16.7 6.7 19.5l1.1-6L3.4 9.3l6-.8z"/>'),
+  expansion: IC('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   manager: IC('<path d="M3 14 L7 6 L10 11 L13 4 L17 14"/><circle cx="19" cy="14" r="1.5"/>'),
   customer: IC('<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>'),
   supplier: IC('<path d="M12 21V11"/><path d="M12 11L6 5M12 11l8-1M12 11l-2 8"/><circle cx="12" cy="11" r="1.5"/>'),
@@ -49,7 +53,7 @@ function networkSVG(b) {
   const toSite = b.solarDir + b.windDir + b.dis + b.mkt;
   g += edge(`M412,${hubY} C440,${hubY} 440,110 466,110`, toSite, '#0E7568', 440, 140);
   g += edge(`M548,262 L548,176`, b.gridToLoad, 'var(--grid)', 548, 222);
-  g += node(16, 20, 170, 64, 'Kutch Solar', 'KTC-SOL-01 · ' + state.cfg.solar + ' MWp', '', { bar: 'var(--solar)', go: 'suppliers' });
+  g += node(16, 20, 170, 64, 'Kutch Solar', 'KTC-SOL-01 · ' + state.cfg.solar + ' MWac', '', { bar: 'var(--solar)', go: 'suppliers' });
   g += node(16, 96, 170, 64, 'Kutch Wind', 'KTC-WND-02 · ' + state.cfg.wind + ' MW', '', { bar: 'var(--wind)', go: 'suppliers' });
   g += node(16, 172, 170, 64, 'Jamnagar Battery', out ? 'OUTAGE' : (b.dis > 0.05 ? 'discharging' : b.chg + b.gc > 0.05 ? 'charging' : 'standby') + ' · ' + pc(b.soc / cap, 0) + ' full', '', { bar: 'var(--bess)', stroke: out ? 'var(--crit)' : 'var(--line)', sub: out ? 'var(--crit)' : 'var(--muted)' });
   g += node(16, 248, 170, 64, 'Exchange blocks', 'IEX via trading member', '', { bar: 'var(--mkt)', role: 'trader' });
@@ -92,7 +96,7 @@ const miniLegend = () => `<div class="legend" style="font-size:11.5px">${LAYERS.
 /* ---------- control room ---------- */
 V.control = () => {
   const i = state.day * BPD + state.block, b = R.blocks[i], o = R.hours[state.day * 24 + b.h];
-  const mtd = SIM.scoreThrough(R, state.day, state.block), mtd0 = SIM.scoreThrough(R0, state.day, state.block);
+  const mtd = SIM.scoreThrough(R, state.day, state.block, 'estimate'), mtd0 = SIM.scoreThrough(R0, state.day, state.block, 'estimate');
   const clean = b.solarDir + b.windDir + b.disElig + b.mkt, cap = state.cfg.bessMWh || 1;
   const feed = feedItems(state.day * 1440 + state.block * 15 + 14).slice(0, 6);
   const nextH = [1, 2, 3, 4, 5].map(k => b.h + k).filter(h => h < 24).map(h => R.hours[state.day * 24 + h]);
@@ -110,13 +114,14 @@ V.control = () => {
   return `
   <div class="toolbar"><div class="ptitle"><h1>Control room</h1><span class="sub">Hyperscaler A · JMN-DC-01 · CFE${state.tier} contract</span></div><div class="row">${timeControls()}${eventControls()}</div></div>
   ${activeChips()}
+  ${state.events.length ? `<div class="panel" style="padding:12px 14px">${scenarioBrief()}</div>` : promiseBox(state.tier)}
   <div class="kpis compact">
     ${kpi('Demand now', f0(b.L) + ' <small>MW</small>', blkTime(state.block) + '–' + blkTime(state.block + 1))}
     ${kpi('Clean now', pc(clean / b.L, 0), f0(clean) + ' of ' + f0(b.L) + ' MW', clean / b.L >= .9 ? 'good' : 'crit')}
     ${kpi('This hour', pc(o.cfe, 0), String(b.h).padStart(2, '0') + ':00 hourly match', o.cfe >= .9 ? 'good' : 'crit')}
-    ${kpi('Month to date', pc(mtd), state.events.length ? (mtd - mtd0 >= 0 ? '+' : '−') + Math.abs((mtd - mtd0) * 100).toFixed(2) + ' pts vs plan' : 'floor CFE' + state.tier, mtd * 100 >= state.tier ? 'good' : 'crit')}
+    ${kpi('Month to date · estimate', pc(mtd), state.events.length ? (mtd - mtd0 >= 0 ? '+' : '−') + Math.abs((mtd - mtd0) * 100).toFixed(2) + ' pts vs plan' : 'operational, as of ' + blkTime(state.block), mtd * 100 >= state.tier ? 'good' : 'crit')}
     ${kpi('Battery', b.P_b === 0 && state.cfg.bessMW ? 'Out' : pc(b.soc / cap, 0), b.P_b === 0 && state.cfg.bessMW ? 'forced outage' : 'charge level · ' + f0(b.soc) + ' MWh', b.P_b === 0 && state.cfg.bessMW ? 'crit' : '')}
-    ${kpi('Exchange index', '₹' + f0(b.price), 'per MWh · illustrative')}
+    ${(() => { const cr = creditMoney(R.M.scoreComplete, state.tier); return kpi('Forecast month · credit exposure', pc(R.M.scoreComplete), cr.creditPct ? cr.creditPct.toFixed(1) + '% of bill at risk' : 'no credit exposure', cr.creditPct ? 'crit' : 'good'); })()}
   </div>
   <div class="cr-main">
     <div class="panel"><div class="ph"><h3>Live flows</h3><span class="sub">MW · ${blkTime(state.block)}–${blkTime(state.block + 1)}</span></div>${networkSVG(b)}
@@ -136,7 +141,7 @@ V.control = () => {
       <div class="msgs" style="max-height:290px">${feed.length ? feed.map(msgHTML).join('') : '<p class="muted small">No messages yet at this time.</p>'}</div></div>
     <div class="panel"><div class="ph"><h3>Alerts</h3>${chip(alerts[0][0] === 'good' ? 'Normal' : alerts.length + ' open', alerts[0][0] === 'good' ? 'good' : 'warn')}</div>
       ${alerts.map(([t, h, d]) => `<div class="alert"><i style="background:var(--${t === 'good' ? 'good' : t === 'crit' ? 'crit' : 'warn'})"></i><span><b style="font-weight:600">${h}</b><br><span class="small muted">${d}</span></span></div>`).join('')}
-      <p class="small muted" style="margin-top:10px">Servers never wait for clean power. Grid MWh keep the site running and count at zero.</p></div>
+      <p class="small muted" style="margin-top:10px">Uncovered demand stays on normal grid supply and counts at zero. The model assumes grid fallback; actual reliability depends on the customer\u2019s own infrastructure and backup.</p></div>
   </div>`;
 };
 
@@ -153,14 +158,14 @@ function socSVG(d) {
   return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Battery charge level through the day">${g}</svg></div>`;
 }
 function dailyScoreSVG() {
-  const W = 560, H = 230, ml = 40, mr = 10, mt = 14, mb = 26, pw = W - ml - mr, ph = H - mt - mb, bw = pw / 30;
-  const days = Array.from({ length: 30 }, (_, d) => { const H_ = R.hours.slice(d * 24, d * 24 + 24); return H_.reduce((a, o) => a + (o.status === 'CLAIM_READY' ? o.matched : 0), 0) / H_.reduce((a, o) => a + o.load, 0); });
+  const W = 560, H = 230, ml = 40, mr = 10, mt = 14, mb = 26, pw = W - ml - mr, ph = H - mt - mb, bw = pw / SIM.DAYS;
+  const days = Array.from({ length: SIM.DAYS }, (_, d) => { const H_ = R.hours.slice(d * 24, d * 24 + 24); return H_.reduce((a, o) => a + (o.status === 'CLAIM_READY' ? o.matched : 0), 0) / H_.reduce((a, o) => a + o.load, 0); });
   const lo = 0.5, y = v => mt + ph * (1 - (Math.max(lo, v) - lo) / (1 - lo));
   let g = '';
   [0.5, 0.6, 0.7, 0.8, 0.9, 1].forEach(v => g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line-2)"/><text x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`);
   days.forEach((v, d) => g += `<rect class="clickable" data-day="${d}" x="${ml + d * bw + 3}" y="${y(v)}" width="${bw - 6}" height="${y(lo) - y(v)}" rx="3" fill="${v * 100 >= state.tier ? 'var(--h3)' : 'var(--h1)'}" ${d === state.day ? 'stroke="var(--ink)" stroke-width="2"' : ''}><title>${dayLabel(d)} · ${pc(v)}</title></rect>`);
   g += `<line x1="${ml}" x2="${W - mr}" y1="${y(state.tier / 100)}" y2="${y(state.tier / 100)}" stroke="var(--crit)" stroke-dasharray="6 4" stroke-width="1.5"/><text x="${W - mr - 4}" y="${y(state.tier / 100) - 5}" text-anchor="end" style="fill:var(--crit)">CFE${state.tier} floor</text>`;
-  for (let d = 0; d < 30; d += 5) g += `<text x="${ml + d * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${d + 1}</text>`;
+  for (let d = 0; d < SIM.DAYS; d += 5) g += `<text x="${ml + d * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${d + 1}</text>`;
   return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily CFE score for October">${g}</svg></div>`;
 }
 function weakHoursSVG() {
@@ -203,10 +208,10 @@ V.home = () => {
   const b = R.blocks[state.day * BPD + state.block], clean = b.solarDir + b.windDir + b.disElig + b.mkt;
   return `<div class="home">
   <section class="hero"><div><div class="eyebrow">Reliance · hourly clean energy</div><h1>CFE Manager</h1>
-    <p>One platform for everyone who makes a clean hour happen. Customers, generators, the trading member and the verifier each get their own portal. Reliance runs the operations console in the middle.</p>
-    <div class="actions"><button class="btn" data-role="manager">Open the operations console</button><button class="btn ghost" data-act="demo">▶ Presentation demo</button><button class="btn ghost" data-act="uc">Q&amp;A use cases</button></div></div>
+    <p>One platform for everyone who makes a clean hour happen. Customers, generators, the trading member and the verifier each get their own portal. Reliance runs the operations console in the middle.</p><p class="heropromise">${CFE_PROMISE(90)}</p>
+    <div class="actions"><button class="btn" data-role="manager">Open the operations console</button><button class="btn ghost" data-act="demo">▶ Judge demo · 2 min</button><button class="btn ghost" data-act="uc">Q&amp;A use cases</button></div></div>
     <div class="stats">
-      <div class="stat"><b>${pc(R.M.scoreComplete)}</b><span>October score, live account</span></div>
+      <div class="stat"><b>${pc(R.M.scoreComplete)}</b><span>illustrative October score</span></div>
       <div class="stat"><b>${pc(clean / b.L, 0)}</b><span>clean right now · ${blkTime(state.block)}</span></div>
       <div class="stat"><b>${f0(state.cfg.solar + state.cfg.wind)} MW</b><span>contracted solar and wind</span></div>
       <div class="stat"><b>${state.cfg.bessMWh} MWh</b><span>contracted storage</span></div>

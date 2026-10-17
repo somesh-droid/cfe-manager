@@ -16,7 +16,7 @@ function avgProfileSVG(vals, color, label, max) {
 function custLoadAvg(mw, shape) {
   const out = new Array(24).fill(0);
   for (let i = 0; i < SIM.NB; i++) { const h = Math.floor((i % BPD) / 4); out[h] += P.load[i] * mw / 100 * (shape === 'day' ? (0.78 + 0.44 * Math.exp(-Math.pow(((i % BPD) / 4 + .125 - 13.5) / 4.2, 2))) / 0.916 : 1); }
-  return out.map(v => v / (30 * 4));
+  return out.map(v => v / (SIM.DAYS * 4));
 }
 
 V.c_onboard = () => {
@@ -42,7 +42,7 @@ V.c_onboard = () => {
   if (s === 2) body = `<div class="form">
       <div class="fld full"><label>How is the site supplied today?</label><div class="radios">${[['none', 'DISCOM only'], ['solar', 'Annual solar PPA / RECs'], ['rtc', 'Round-the-clock block contract']].map(([v, l]) => `<label><input type="radio" name="cw-current" value="${v}" ${f.current === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
       <div class="fld"><label for="cw-share">Share of annual load covered, %</label><input type="number" id="cw-share" min="0" max="100" value="${f.share}" ${f.current === 'none' ? 'disabled' : ''}></div>
-      <div class="fld"><label for="cw-tier">Hourly target of interest</label><select id="cw-tier">${[70, 90, 95].map(t => `<option value="${t}" ${+f.tier === t ? 'selected' : ''}>CFE${t}</option>`).join('')}</select></div>
+      <div class="fld"><label for="cw-tier">Hourly target of interest</label><select id="cw-tier">${[70, 80, 90, 95].map(t => `<option value="${t}" ${+f.tier === t ? 'selected' : ''}>CFE${t}</option>`).join('')}</select></div>
       <div class="fld full"><label class="row" style="font-weight:400"><input type="checkbox" id="cw-authority" ${f.authority ? 'checked' : ''}> We hold procurement authority for this site's power contract</label>
       <label class="row" style="font-weight:400"><input type="checkbox" id="cw-meterOk" ${f.meterOk ? 'checked' : ''}> We permit read-only access to interface meter data under NDA</label>
       <span class="hint">Both are hard requirements. Without them, the account cannot progress past discovery.</span></div>
@@ -51,8 +51,9 @@ V.c_onboard = () => {
     const dg = state.cw.diag;
     const worst = dg.profile.map((v, h) => [h, v]).sort((a, b) => a[1] - b[1]).slice(0, 4);
     body = `<div class="stack">
-      <div class="kpis">${kpi('Renewable on an annual basis', pc(dg.annual, 0), f.current === 'none' ? 'no clean contracts today' : 'what the annual report says')}${kpi('Matched hour by hour', pc(dg.hourly, 0), 'the same energy, measured honestly', 'crit')}${kpi('Gap to CFE' + f.tier, Math.max(0, f.tier - dg.hourly * 100).toFixed(0) + ' <small>pts</small>', 'what a CF90 service closes')}</div>
+      <div class="kpis">${kpi('Renewable on an annual basis · simulated customer', pc(dg.annual, 0), f.current === 'none' ? 'no clean contracts today' : 'what the annual report says')}${kpi('Matched hour by hour', pc(dg.hourly, 0), 'the same energy, measured honestly', 'crit')}${kpi('Gap to CFE' + f.tier, Math.max(0, f.tier - dg.hourly * 100).toFixed(0) + ' <small>pts</small>', 'what a CF90 service closes')}</div>
       <div class="panel flat"><div class="ph"><h4>Share of each hour matched by current contracts</h4><span class="sub">October profile · averaged per hour</span></div>${avgProfileSVG(dg.profile, v => v >= .9 ? 'var(--h3)' : v >= .5 ? 'var(--h2)' : v > .05 ? 'var(--h1)' : 'var(--h0)', '%', 1)}</div>
+      <div class="callout">This is one simulated, solar-heavy customer: an annual solar contract covering 100% of yearly use. A customer with wind or round-the-clock contracts will show a different baseline.</div>
       <div class="callout warn">Weakest hours: ${worst.map(([h, v]) => `<b>${String(h).padStart(2, '0')}:00</b> (${pc(v, 0)})`).join(', ')}. Night load needs wind, stored solar and evening blocks.</div>
     </div>`;
   }
@@ -60,12 +61,12 @@ V.c_onboard = () => {
     const pr = state.cw.prop, gateOk = f.state === 'Gujarat';
     body = `<div class="stack">
       ${gateOk ? '' : `<div class="callout warn"><b>${f.state}</b> has not cleared the state entry gates. We can offer a diagnostic and shadow monitoring now; a binding proposal follows once supply and a delivery route are qualified.</div>`}
-      <div class="g3">${pr.map(p => `<div class="panel" style="${state.cw.tierPick === p.tier ? 'border:2px solid var(--brand)' : ''}">
-        <div class="ph"><h3>CFE${p.tier}</h3>${p.feasible ? chip(pc(p.score) + ' back-tested', 'good') : chip('Bespoke', 'crit')}</div>
+      <div class="g4">${pr.map(p => `<div class="panel" style="${state.cw.tierPick === p.tier ? 'border:2px solid var(--brand)' : ''}">
+        <div class="ph"><h3>CFE${p.tier}</h3>${p.feasible ? chip(pc(p.score) + ' illustrative month', 'good') : chip('Bespoke', 'crit')}</div>
         <div class="tw"><table><tbody>
-          <tr><td>${sw('var(--solar)')}Solar</td><td class="r num">${p.cfg.solar} MWp</td></tr><tr><td>${sw('var(--wind)')}Wind</td><td class="r num">${p.cfg.wind} MW</td></tr>
+          <tr><td>${sw('var(--solar)')}Solar</td><td class="r num">${p.cfg.solar} MWac</td></tr><tr><td>${sw('var(--wind)')}Wind</td><td class="r num">${p.cfg.wind} MW</td></tr>
           <tr><td>${sw('var(--bess)')}Battery</td><td class="r num">${p.cfg.bessMW} / ${p.cfg.bessMWh} MWh</td></tr><tr><td>${sw('var(--mkt)')}Exchange cap</td><td class="r num">${p.cfg.mkt} MW</td></tr>
-          <tr><td>Hours below ${p.tier}%</td><td class="r num">${p.below} / 720</td></tr>
+          <tr><td>Hours below ${p.tier}%</td><td class="r num">${p.below} / ${SIM.DAYS * 24}</td></tr>
         </tbody></table></div>
         <button class="btn ${state.cw.tierPick === p.tier ? 'primary' : ''}" style="width:100%;justify-content:center;margin-top:10px" data-act="cwTier" data-t="${p.tier}">${state.cw.tierPick === p.tier ? 'Selected' : 'Select CFE' + p.tier}</button></div>`).join('')}</div>
       <p class="small muted">Portfolios sized by the same engine that runs live dispatch. Prices come from the finance model and are not shown here.</p>
@@ -79,7 +80,7 @@ V.c_onboard = () => {
           <dt>Parties</dt><dd>CF90 Services (Reliance energy-services entity) and ${esc(f.name || 'Customer')}</dd>
           <dt>Site</dt><dd>${esc(f.city || '—')}, ${f.state} · ${f.mw} MW · ${f.kv}</dd>
           <dt>Service</dt><dd>Monthly load-weighted score of hourly-matched eligible MWh, floor CFE${p.tier}</dd>
-          <dt>Portfolio</dt><dd>${p.cfg.solar} MWp solar, ${p.cfg.wind} MW wind, ${p.cfg.bessMW} MW / ${p.cfg.bessMWh} MWh storage, exchange blocks up to ${p.cfg.mkt} MW</dd>
+          <dt>Portfolio</dt><dd>${p.cfg.solar} MWac solar, ${p.cfg.wind} MW wind, ${p.cfg.bessMW} MW / ${p.cfg.bessMWh} MWh storage, exchange blocks up to ${p.cfg.mkt} MW</dd>
           <dt>Evidence</dt><dd>Accredited granular certificates cancelled to the buyer; independent claims verifier</dd>
           <dt>Remedy</dt><dd>Service credit on a verified monthly miss, capped. Rate set by finance.</dd>
           <dt>Reliability</dt><dd>Unchanged: DISCOM and backup supply keep the site running; we never touch IT loads</dd>
@@ -102,7 +103,7 @@ function cwAdvance() {
   const f = cwF();
   if (state.cw.step === 2) state.cw.diag = SIM.diagnostic(P, +f.mw, f.shape, f.current, +f.share);
   if (state.cw.step === 3) {
-    state.cw.prop = [70, 90, 95].map(t => { const z = SIM.size(P, +f.mw, f.shape, t); return { tier: t, feasible: z.feasible, cfg: z.cfg, score: z.score, below: SIM.below(z.R || SIM.run(P, z.cfg, []), t) }; });
+    state.cw.prop = [70, 80, 90, 95].map(t => { const z = SIM.size(P, +f.mw, f.shape, t); return { tier: t, feasible: z.feasible, cfg: z.cfg, score: z.score, below: SIM.below(z.R || SIM.run(P, z.cfg, []), t) }; });
     state.cw.tierPick = +f.tier;
   }
   state.cw.step = Math.min(5, state.cw.step + 1);
@@ -114,22 +115,25 @@ function cwSubmit() {
 }
 
 V.c_service = () => {
-  const M = R.M, below = SIM.below(R, state.tier);
+  const M = R.M, below = SIM.below(R, state.tier), nH = R.hours.length;
   const notes = state.events.flatMap(eventMessages).filter(m => m.to === 'CUST').sort((a, b) => b.t - a.t);
+  const done = R.certs.filter(c => !c.pending);
   return `
-  <div class="phead"><div><div class="eyebrow">Customer portal · Hyperscaler A</div><h1>Your clean-energy service</h1><p class="lead">JMN-DC-01, Jamnagar · CFE90 monthly floor · October 2026 (simulated)</p></div><button class="btn" data-role="customer" data-view="c_statement">Open October statement</button></div>
+  <div class="phead"><div><div class="eyebrow">Customer portal · Hyperscaler A (illustrative account)</div><h1>Your clean-energy service</h1><p class="lead">JMN-DC-01, Jamnagar · CFE${state.tier} monthly floor · ${PERIOD} · full-month replay</p></div><button class="btn" data-role="customer" data-view="c_statement">Open October statement</button></div>
+  ${promiseBox(state.tier, ` This month ${below} of ${nH} hours fell below ${state.tier}%, yet the energy-weighted monthly score is ${pc(M.scoreComplete)}.`)}
+  ${stageStrip(M)}
   <div class="kpis">
-    ${kpi('Month score, evidence-complete', pc(M.scoreComplete), 'floor CFE' + state.tier, M.scoreComplete * 100 >= state.tier ? 'good' : 'crit')}
-    ${kpi('Hours below ' + state.tier + '%', below + ' <small>/ 720</small>', 'monthly average still governs')}
-    ${kpi('Certificates cancelled to you', f0(R.certs.filter(c => !c.pending).length), f0(R.certs.filter(c => !c.pending).reduce((a, c) => a + c.mwh, 0)) + ' MWh')}
-    ${kpi('Verification', 'Pending', 'month-end review by verifier', 'warn')}
+    ${kpi('Month score, evidence reconciled', pc(M.scoreComplete), 'floor CFE' + state.tier, M.scoreComplete * 100 >= state.tier ? 'good' : 'crit')}
+    ${kpi('Hours below ' + state.tier + '%', below + ' <small>/ ' + nH + '</small>', 'the monthly, energy-weighted score governs')}
+    ${kpi('Certificate batches cancelled to you', f0(done.length), 'one batch per source per hour · ' + f0(done.reduce((a, c) => a + c.mwh, 0)) + ' MWh')}
+    ${kpi('Independent assurance', 'Pending', 'month-end review by verifier', 'warn')}
   </div>
   <div class="g21">
     <div class="panel"><div class="ph"><h3>Every hour this month</h3>${heatLegend()}</div>${heatSVG(R, state.day, state.hourSel)}</div>
     <div class="stack">
       <div class="panel"><div class="ph"><h3>Notifications</h3></div><div class="msgs" style="max-height:260px">${notes.length ? notes.map(msgHTML).join('') : '<p class="small muted">No advisories this month.</p>'}</div></div>
       <div class="panel"><div class="ph"><h3>Planned load change</h3>${chip('optional', 'neutral')}</div>
-        <p class="small muted" style="margin-bottom:10px">Tell us about large planned changes so we can re-plan supply. We never control your servers.</p>
+        <p class="small muted" style="margin-bottom:10px">Tell us about large planned changes so we can re-plan supply. We never control your IT equipment.</p>
         <button class="btn primary" data-act="custRamp">Notify +20 MW training run tonight (${dayLabel(state.day)})</button></div>
       <div class="panel"><div class="ph"><h3>What we can see</h3></div><ul class="plain small"><li>Interface meter readings, 15-minute</li><li>Optional MW flexibility envelope</li><li class="muted">Not visible: workloads, servers, cooling, UPS, user data</li></ul></div>
     </div>
@@ -137,28 +141,39 @@ V.c_service = () => {
 };
 
 V.c_statement = () => {
-  const M = R.M, sc = SIM.serviceCredit(M.scoreComplete, state.tier), below = SIM.below(R, state.tier);
-  const rows = [['Solar · KTC-SOL-01', M.solar, 'var(--solar)'], ['Wind · KTC-WND-02', M.wind, 'var(--wind)'], ['Battery, clean-charged · JMN-BES-01', M.bessElig, 'var(--bess)'], ['Green exchange blocks', M.mkt, 'var(--mkt)'], ['Battery, grid-charged (not counted)', M.bessInelig, 'var(--bess-x)'], ['DISCOM residual (not counted)', M.grid, 'var(--grid)']];
+  const M = R.M, cr = creditMoney(M.scoreComplete, state.tier), below = SIM.below(R, state.tier), nH = R.hours.length;
+  const rows = [['Solar · KTC-SOL-01', M.solar, 'var(--solar)'], ['Wind · KTC-WND-02', M.wind, 'var(--wind)'], ['Stored solar/wind · JMN-BES-01', M.bessElig, 'var(--bess)'], ['Green exchange blocks', M.mkt, 'var(--mkt)'], ['Battery, grid-charged (not counted)', M.bessInelig, 'var(--bess-x)'], ['DISCOM residual (not counted)', M.grid, 'var(--grid)']];
   const ex = R.hours.filter(o => o.exception);
   const exCount = k => ex.filter(o => o.exception === k).length;
+  const met = M.scoreComplete * 100 >= state.tier;
   return `
-  <div class="phead"><div><div class="eyebrow">Customer portal · Statement</div><h1>October 2026 service statement</h1><p class="lead">Hyperscaler A · JMN-DC-01 · statement CF90-STMT-OCT26 · simulated</p></div>${chip(M.status === 'PROVISIONAL' ? 'Provisional' : 'Claim-ready · awaiting verifier', M.status === 'PROVISIONAL' ? 'warn' : 'info')}</div>
+  <div class="phead"><div><div class="eyebrow">Customer portal · Statement</div><h1>October 2026 service statement</h1><p class="lead">Hyperscaler A (illustrative) · JMN-DC-01 · CF90-STMT-OCT26 · ${PERIOD}</p></div>${chip(M.unresolved ? M.unresolved + ' hours unresolved' : 'Evidence reconciled · assurance pending', M.unresolved ? 'warn' : 'info')}</div>
+  ${stageStrip(M)}
   <div class="g12">
-    <div class="panel"><div class="eyebrow">Monthly CFE score</div><div class="big" style="font-size:56px;margin:6px 0;color:${M.scoreComplete * 100 >= state.tier ? 'var(--good)' : 'var(--crit)'}">${pc(M.scoreComplete)}</div>
+    <div class="panel"><div class="eyebrow">Monthly CFE score · evidence reconciled</div><div class="big" style="font-size:56px;margin:6px 0;color:${met ? 'var(--good)' : 'var(--crit)'}">${pc(M.scoreComplete)}</div>
       <div class="meter" style="margin:10px 0 6px"><div class="f" style="width:${M.scoreComplete * 100}%;background:#0E7568"></div><div class="tk" style="left:${state.tier}%"></div></div>
-      <p class="small muted">Floor CFE${state.tier} · ${M.scoreComplete * 100 >= state.tier ? 'met by ' + (M.scoreComplete * 100 - state.tier).toFixed(1) + ' pts' : 'missed by ' + (state.tier - M.scoreComplete * 100).toFixed(1) + ' pts'}</p>
-      <dl class="kv" style="margin-top:14px"><dt>Load metered</dt><dd>${f0(M.load)} MWh</dd><dt>Matched, evidence-complete</dt><dd>${f0(M.scoreComplete * M.load)} MWh</dd><dt>Hours below ${state.tier}%</dt><dd>${below} of 720</dd><dt>Provisional hours</dt><dd>${M.provisional}</dd><dt>Meter-gap hours</dt><dd>${M.incomplete}</dd></dl></div>
-    <div class="panel"><div class="ph"><h3>Supply that served your load</h3><span class="sub">MWh</span></div>
+      <p class="small muted">Floor CFE${state.tier} · ${met ? 'met by ' + (M.scoreComplete * 100 - state.tier).toFixed(1) + ' pts' : 'missed by ' + (state.tier - M.scoreComplete * 100).toFixed(1) + ' pts'} · ${below} of ${nH} hours below ${state.tier}% (the score is energy-weighted)</p>
+      <div class="eyebrow" style="margin:14px 0 6px">Reconciliation, MWh</div>
+      <div class="tw"><table><tbody>
+        <tr><td>Load metered</td><td class="r num">${f0(M.load)}</td></tr>
+        <tr><td>Physical clean supply matched to load</td><td class="r num">${f0(M.physicalMatched)}</td></tr>
+        <tr><td>− excluded: missing meter evidence (${M.incomplete} h)</td><td class="r num">${f0(M.excludedMissing)}</td></tr>
+        <tr><td>− excluded: certificates pending (${M.provisional} h)</td><td class="r num">${f0(M.excludedPending)}</td></tr>
+        <tr style="font-weight:600"><td>= Eligible, claimable</td><td class="r num">${f0(M.scoreComplete * M.load)}</td></tr>
+        <tr><td class="muted">Unresolved hours</td><td class="r num muted">${M.unresolved}</td></tr>
+      </tbody></table></div></div>
+    <div class="panel"><div class="ph"><h3>Physical supply that served your load</h3><span class="sub">MWh · before evidence exclusions</span></div>
       <div class="bar" style="height:18px;margin-bottom:12px">${rows.map(r => `<span style="width:${r[1] / M.load * 100}%;background:${r[2]}"></span>`).join('')}</div>
-      <div class="tw"><table><tbody>${rows.map(r => `<tr><td>${sw(r[2])}${r[0]}</td><td class="r num">${f0(r[1])}</td><td class="r num muted">${pc(r[1] / M.load)}</td></tr>`).join('')}</tbody></table></div></div>
+      <div class="tw"><table><tbody>${rows.map(r => `<tr><td>${sw(r[2])}${r[0]}</td><td class="r num">${f0(r[1])}</td><td class="r num muted">${pc(r[1] / M.load)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="small muted" style="margin-top:8px">Stored energy carries the certificates of the solar or wind that charged it, after storage losses. The battery does not create new renewable attributes.</p></div>
   </div>
   <div class="g3">
     <div class="panel"><div class="ph"><h3>Exceptions</h3></div><div class="tw"><table><tbody>
-      <tr><td>Hours with grid residual</td><td class="r num">${exCount('RESIDUAL-GRID')}</td></tr><tr><td>Hours with grid-charged storage</td><td class="r num">${exCount('BESS-MIXED')}</td></tr><tr><td>Meter-gap hours</td><td class="r num">${exCount('MTR-GAP')}</td></tr><tr><td>Certificates pending</td><td class="r num">${exCount('GC-PENDING')}</td></tr>
+      <tr><td>Hours with grid residual</td><td class="r num">${exCount('RESIDUAL-GRID')}</td></tr><tr><td>Hours with grid-charged storage</td><td class="r num">${exCount('BESS-MIXED')}</td></tr><tr><td>Meter-gap hours (unresolved)</td><td class="r num">${exCount('MTR-GAP')}</td></tr><tr><td>Certificates pending (unresolved)</td><td class="r num">${exCount('GC-PENDING')}</td></tr>
     </tbody></table></div></div>
-    <div class="panel"><div class="ph"><h3>Service credit</h3>${chip('Illustrative', 'warn')}</div>
-      <div class="big" style="font-size:36px;color:${sc.creditPct ? 'var(--crit)' : 'var(--ink)'}">${sc.creditPct.toFixed(1)}%</div><p class="small muted">of monthly service fee · ${sc.shortfallPts.toFixed(1)} pts shortfall. Placeholder rule: 2% per point, cap 20%. Payable only on the verified result.</p></div>
-    <div class="panel"><div class="ph"><h3>Verification</h3>${chip('Pending', 'warn')}</div>
+    <div class="panel"><div class="ph"><h3>Service credit</h3>${chip('Draft rule', 'warn')}</div>
+      <div class="big" style="font-size:36px;color:${cr.creditPct ? 'var(--crit)' : 'var(--ink)'}">${cr.creditPct.toFixed(1)}%</div><p class="small muted">of the monthly electricity bill${cr.rupees !== null ? ' (' + rupees(cr.rupees) + ')' : ''} · ${cr.shortfallPts.toFixed(1)} pts shortfall. Rule: 2% of the bill per point below the floor, capped at 10%. Payable only on the independently verified result.</p></div>
+    <div class="panel"><div class="ph"><h3>Independent assurance</h3>${chip('Pending', 'warn')}</div>
       <p class="small">Evidence pack sent to the independent verifier: meter data, schedules, certificate cancellations, method v1.0.</p><p class="small muted" style="margin-top:6px">The prototype cannot issue an opinion. Until a verifier signs, this score is not a public claim.</p></div>
   </div>`;
 };
@@ -219,7 +234,7 @@ V.s_onboard = () => {
   if (s === 5) {
     const c = state.sw.gates, v = state.sw.value;
     body = c.eligible ? `<div class="stack">
-      <div class="kpis">${kpi('Hyperscaler A monthly score', pc(v.after), 'from ' + pc(v.before) + ' (+' + ((v.after - v.before) * 100).toFixed(1) + ' pts)', 'good')}${kpi('Night hours matched, 19:00–06:00', pc(v.nightA), 'from ' + pc(v.nightB))}${kpi('Hours below 90%', v.belowA + ' <small>/ 720</small>', 'from ' + v.belowB)}${kpi('Surplus not counted', f0(v.surplusA) + ' <small>MWh</small>', 'from ' + f0(v.surplusB), v.surplusA - v.surplusB > 500 ? 'warn' : '')}</div>
+      <div class="kpis">${kpi('Hyperscaler A monthly score', pc(v.after), 'from ' + pc(v.before) + ' (+' + ((v.after - v.before) * 100).toFixed(1) + ' pts)', 'good')}${kpi('Night hours matched, 19:00–06:00', pc(v.nightA), 'from ' + pc(v.nightB))}${kpi('Hours below 90%', v.belowA + ' <small>/ ' + SIM.DAYS * 24 + '</small>', 'from ' + v.belowB)}${kpi('Surplus not counted', f0(v.surplusA) + ' <small>MWh</small>', 'from ' + f0(v.surplusB), v.surplusA - v.surplusB > 500 ? 'warn' : '')}</div>
       <div class="g2"><div class="panel flat"><div class="ph"><h4>What we offer you</h4></div><ul class="plain small"><li>Long-term offtake for energy plus attributes, 10–15 years</li><li>Agreed delivery profile and curtailment allocation</li><li>Schedules sent through your coordinator; no control of your plant</li><li>Monthly settlement statement and certificate record</li></ul></div>
       <div class="panel flat"><div class="ph"><h4>What we need from you</h4></div><ul class="plain small"><li>Exclusive attribute transfer to our named buyer</li><li>15-minute generation and availability data</li><li>Outage notice and forecast updates</li><li>Lender consent and no double-selling of capacity</li></ul></div></div>
       <button class="btn primary" data-act="swSubmit" style="justify-self:start">Submit to CFE Manager procurement</button></div>`
@@ -298,8 +313,8 @@ V.v_review = () => {
   const M = R.M;
   const reg = SIM.makeRegistry(); let dups = 0; R.certs.forEach(c => { if (!reg.assign(c.serial, c.beneficiary).ok) dups++; });
   const r = (() => { let a = 7 + state.day; return () => (a = (a * 9301 + 49297) % 233280) / 233280; })();
-  const sample = Array.from({ length: 12 }, () => R.hours[Math.floor(r() * 720)]);
-  const comp = 1 - M.incomplete / 720;
+  const sample = Array.from({ length: 12 }, () => R.hours[Math.floor(r() * R.hours.length)]);
+  const comp = 1 - M.incomplete / R.hours.length;
   const items = [
     ['Method v1.0 agreed with buyer', true, 'monthly load-weighted hourly match'],
     ['Meter data completeness', comp > 0.995, pc(comp) + ' of hours metered'],
@@ -314,7 +329,7 @@ V.v_review = () => {
   <div class="g2">
     <div class="panel"><div class="ph"><h3>Review checklist</h3></div><div class="gates">${items.map(([k, ok, d]) => `<div class="gate ${ok ? 'pass' : 'fail'}"><span class="ic">${ok ? '✓' : '!'}</span><span>${k}<br><span class="d">${d}</span></span><span class="small ${ok ? 'ok' : 'no'}">${ok ? 'pass' : 'finding'}</span></div>`).join('')}</div></div>
     <div class="panel"><div class="ph"><h3>Re-performed sample</h3><button class="btn sm" data-act="resample">Draw a new sample</button></div>
-      <div class="tw"><table><thead><tr><th>Hour</th><th class="r">Reported</th><th class="r">Re-performed</th><th>Result</th></tr></thead><tbody>
+      <div class="tw"><table><thead><tr><th>Hour</th><th class="r">Reported, MWh</th><th class="r">Re-performed, MWh</th><th>Result</th></tr></thead><tbody>
       ${sample.map(o => { const re = o.status === 'INCOMPLETE' ? 0 : Math.min(o.load, o.solar + o.wind + o.bessElig + o.mkt), rep = o.status === 'INCOMPLETE' ? 0 : o.matched; return `<tr><td class="num">${dayLabel(o.d).replace(/^\w+ /, '')} ${String(o.h).padStart(2, '0')}:00</td><td class="r num">${f1(rep)}</td><td class="r num">${f1(re)}</td><td>${Math.abs(re - rep) < 1e-6 ? chip('Agrees', 'good') : chip('Differs', 'crit')}</td></tr>`; }).join('')}
       </tbody></table></div></div>
   </div>

@@ -40,7 +40,7 @@ function blockSteps(i) {
   else if (gapBeforeMkt > 0.05) S.push({ n: 'Green exchange block', a: 'via trading member', who: 'IEX green market', c: 'var(--mkt)', verb: 'Not cleared', mw: 0, st: 'out', d: 'No green block cleared within the bid limit for this block.', p: plan(b.mkt, b0.mkt) });
   else S.push({ n: 'Green exchange block', a: 'via trading member', who: 'IEX green market', c: 'var(--mkt)', verb: 'Not needed', mw: 0, st: 'idle', d: 'Solar, wind and the battery already covered the demand.', p: '' });
   S.push(b.gridToLoad > 0.05
-    ? { n: 'DISCOM grid supply', a: 'residual', who: 'Distribution licensee', c: 'var(--grid)', verb: 'Supplied', mw: b.gridToLoad, st: 'zero', d: 'Covered the remaining gap so the servers kept running. These MW count as 0% clean.', p: plan(b.gridToLoad, b0.gridToLoad) }
+    ? { n: 'DISCOM grid supply', a: 'residual', who: 'Distribution licensee', c: 'var(--grid)', verb: 'Supplied', mw: b.gridToLoad, st: 'zero', d: 'Covered the remaining gap on normal grid supply. These MW count as 0% clean.', p: plan(b.gridToLoad, b0.gridToLoad) }
     : { n: 'DISCOM grid supply', a: 'residual', who: 'Distribution licensee', c: 'var(--grid)', verb: 'Not needed', mw: 0, st: 'idle', d: 'No grid power needed in this block.', p: plan(b.gridToLoad, b0.gridToLoad) });
   return S;
 }

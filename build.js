@@ -11,7 +11,7 @@ const CleanCSS=require('clean-css');
  const reset='*,*::before,*::after{box-sizing:border-box}html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}';
  const mcss=new CleanCSS({level:1}).minify(reset+css).styles;
  let eng=fs.readFileSync(src+'/engine.js','utf8').replace("if (typeof module !== 'undefined') module.exports = SIM;","");
- const FILES=['core.js','manager.js','portals.js','onboard.js','fulfil.js','ops.js','app.js'];
+ const FILES=['core.js','story.js','manager.js','portals.js','onboard.js','fulfil.js','ops.js','proof.js','business.js','judge.js','app.js'];
  const opt={compress:{passes:2},mangle:true,format:{comments:false}};
  fs.rmSync(out,{recursive:true,force:true}); fs.mkdirSync(out+'/js',{recursive:true});
  fs.writeFileSync(out+'/styles.css',mcss);
