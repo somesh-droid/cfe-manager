@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path');
 const {minify}=require('terser');
 const CleanCSS=require('clean-css');
-const src=__dirname+'/src', out=__dirname+'/dist';
+   const src=__dirname, out=__dirname+'/dist';
 (async()=>{
  const shell=fs.readFileSync(src+'/shell.html','utf8');
  const title=shell.match(/<title>.*?<\/title>/)[0];
