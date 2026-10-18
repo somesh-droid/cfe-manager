@@ -266,16 +266,16 @@ const BEATS = [
       <div class="rv-kicker rv" data-at="0.2">13 Oct · day-ahead planning</div>
       <div class="rv-steps">${steps.map(([t, d], k) => `<div class="rv-step rv" data-at="${1.2 + k * 2.4}"><span class="ic">✓</span><span><b>${t}</b><br><span>${d}</span></span></div>`).join('')}</div></div></div>`; },
     cap: [[0.5, 'A day ahead, the engine builds the schedule'], [8.4, 'Gaps bid on IEX · schedules filed with the despatch centres']] },
-  { at: 47, end: 57, ch: 'Real time', run: () => natRun().R0n, live: lt => NAT.day * 96 + 72 + Math.min(12, Math.floor(lt / 0.25)), render: () => {
+  { at: 47, end: 57, ch: 'Real time', run: () => natRun().R0n, live: lt => NAT.day * 96 + 72 + Math.min(12, Math.floor(lt / 0.1)), render: () => {
     const N = natRun(), b = N.R0n.blocks[NAT.day * 96 + 84];
     const parts = [['Wind', b.windDir, 'var(--wind)'], ['Stored solar', b.disElig, 'var(--bess)'], ['IEX blocks', b.mkt, 'var(--mkt)'], ['Grid · 0%', b.gridToLoad, 'var(--grid)']];
     return `<div class="nc-wrap"><div class="nc-main" id="ncLive"></div><div class="nc-rail">
       <div class="rv-clock rv" id="ncClock" data-at="0">18:00</div>
       <div class="rv-kicker rv" data-at="0.2">14 Oct · live dispatch</div>
-      <h1 class="rv-h rv" data-at="3.2">Demand ${f0(b.L)} MW, filled in order</h1>
-      <div class="nc-list">${parts.map(([n, v, c], k) => `<div class="nc-li rv" data-at="${3.8 + k * 1.1}"><span class="dotk" style="background:${c}"></span><span>${k + 1}. ${n}</span><b>${f0(v)} MW</b></div>`).join('')}</div>
-      <p class="rv-note rv" data-at="8.2">Every 15 minutes, 96 times a day.</p></div></div>`; },
-    cap: [[0.3, 'Block by block, through the evening'], [3.2, '21:00 · every block filled in merit order']] },
+      <h1 class="rv-h rv" data-at="1.3">Demand ${f0(b.L)} MW, filled in order</h1>
+      <div class="nc-list">${parts.map(([n, v, c], k) => `<div class="nc-li rv" data-at="${2 + k * 1.1}"><span class="dotk" style="background:${c}"></span><span>${k + 1}. ${n}</span><b>${f0(v)} MW</b></div>`).join('')}</div>
+      <p class="rv-note rv" data-at="7.2">Every 15 minutes, 96 times a day.</p></div></div>`; },
+    cap: [[0.2, '21:00 · every block filled in merit order']] },
   { at: 57, end: 77, ch: 'The month', render: () => {
     const N = natRun(), share = N.extra / N.load;
     return `<div class="nc-wrap"><div class="nc-main">
