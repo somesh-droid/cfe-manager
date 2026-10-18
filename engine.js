@@ -72,7 +72,7 @@ const SIM = (() => {
     const ls = cfg.loadScale || 1, naive = cfg.policy === 'naive';
     const rte = cfg.rte || 0.88, etaC = Math.sqrt(rte), etaD = Math.sqrt(rte);
     const Emax = cfg.bessMWh * 0.95, Emin = cfg.bessMWh * 0.10;
-    let soc = cfg.bessMWh * 0.5, socClean = soc;
+    let soc = cfg.bessMWh * 0.5, socClean = soc, stranded = null;
     const socStart = soc;
     const blocks = new Array(NB);
     let sumChgIn = 0, sumDisOut = 0;
@@ -86,7 +86,11 @@ const SIM = (() => {
       const S = sPU * cfg.solar, W = wPU * cfg.wind;
       const txE = act(events, 'txConstraint', i);
       const tx = txE ? (txE.cap || 150 * ls) : (cfg.tx || 1e9);
-      const P_b = act(events, 'bessOut', i) ? 0 : cfg.bessMW;
+      const bp = act(events, 'bessPartial', i);
+      if (bp && !stranded) { stranded = { e: soc * bp.f, c: socClean * bp.f, f: bp.f }; soc -= stranded.e; socClean -= stranded.c; }
+      if (!bp && stranded) { soc += stranded.e; socClean += stranded.c; stranded = null; }
+      const kf = stranded ? 1 - stranded.f : 1, EmaxB = Emax * kf, EminB = Emin * kf;
+      const P_b = act(events, 'bessOut', i) ? 0 : cfg.bessMW * kf;
       let mAv = P.mkt[i] * cfg.mkt;
       if (act(events, 'mktSpike', i)) mAv = 0;
       const gross = S + W, txOk = Math.min(gross, tx), txCurt = gross - txOk;
@@ -97,14 +101,14 @@ const SIM = (() => {
       const surplus = delivered - direct;
       let chg = 0, gc = 0, dis = 0, disElig = 0;
       if (P_b > 0) {
-        chg = Math.max(0, Math.min(surplus, P_b, (Emax - soc) / (etaC * DT)));
+        chg = Math.max(0, Math.min(surplus, P_b, (EmaxB - soc) / (etaC * DT)));
         soc += chg * etaC * DT; socClean += chg * etaC * DT; sumChgIn += chg;
       }
       const surplusExcl = surplus - chg;
       let deficit = L - direct;
       const gcWin = act(events, 'gridCharge', i) && h >= 2 && h < 5;
       if (P_b > 0 && !gcWin && deficit > 0 && (!naive || h >= 18 || h < 6)) {
-        dis = Math.max(0, Math.min(deficit, naive ? (Emax - Emin) * etaD / 12 : P_b, P_b, (soc - Emin) * etaD / DT));
+        dis = Math.max(0, Math.min(deficit, naive ? (Emax - Emin) * etaD / 12 : P_b, P_b, (soc - EminB) * etaD / DT));
         const out = dis * DT / etaD, frac = soc > 0 ? socClean / soc : 0;
         disElig = dis * frac;
         soc -= out; socClean -= out * frac; sumDisOut += dis; deficit -= dis;
@@ -116,7 +120,7 @@ const SIM = (() => {
         soc += gc * etaC * DT; sumChgIn += gc;
       }
       const fc = Math.min(P.solarFc[i] * cfg.solar + P.windFc[i] * cfg.wind, cfg.tx || 1e9) * (1 - cfg.loss);
-      blocks[i] = { i, d, b, h, L, S, W, sShare, txCurt, losses, delivered, solarDir, windDir, chg, gc, dis, disElig, mkt, mAv, gridToLoad, surplusExcl, soc, socClean, fc, P_b, price: P.price[i],
+      blocks[i] = { i, d, b, h, L, S, W, sShare, stranded: stranded ? stranded.e : 0, txCurt, losses, delivered, solarDir, windDir, chg, gc, dis, disElig, mkt, mAv, gridToLoad, surplusExcl, soc, socClean, fc, P_b, price: P.price[i],
         ev: events.some(e => i >= e.from && i < e.to) };
     }
     const hours = [];

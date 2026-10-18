@@ -98,6 +98,7 @@ document.addEventListener('click', e => {
     case 'dayNext': stopF(); state.day = (state.day + 1) % SIM.DAYS; break;
     case 'play': state.playing ? stopPlay() : startPlay(); break;
     case 'demo': judgeStart(); render(); return;
+    case 'video': recOpen(); return;
     case 'jStep': judgeSetStep(i); break;
     case 'jScene': judgeGo(i); break;
     case 'jPrev': judgeGo(Math.max(0, SCENES.findIndex(s => s.id === state.view) - 1)); break;
@@ -277,13 +278,14 @@ $('demoBtn').addEventListener('click', () => { tourEnd(); judgeStart(); render()
 $('ucBtn').addEventListener('click', () => {
   $('ucDrawer').innerHTML = `<div class="row" style="justify-content:space-between"><div><div class="eyebrow">Q&amp;A library</div><h2>Use cases</h2></div><button class="btn sm" data-close="1">Close</button></div>
   <p class="small muted">Each one sets up the scenario and walks through it step by step. Use Next and Back at your own pace.</p>
-  <button class="uc" data-judge="1"><span class="id">JUDGE</span><span class="t">Judge demo · four scenes, 120 seconds</span><span class="d">Problem, decision, proof, return. Manual advance.</span><span class="ar">›</span></button><button class="uc" data-demo="1"><span class="id">TOUR</span><span class="t">Full platform tour, 15 steps</span><span class="d">Ecosystem, onboarding, operations, evidence and statement, step by step.</span><span class="ar">›</span></button>
+  <button class="uc" data-video="1"><span class="id">VIDEO</span><span class="t">Video demo · 1:40, runs on its own</span><span class="d">Scripted walkthrough for screen recording. Press T for timecode, Esc to stop.</span><span class="ar">›</span></button><button class="uc" data-judge="1"><span class="id">JUDGE</span><span class="t">Judge demo · four scenes, 120 seconds</span><span class="d">Problem, decision, proof, return. Manual advance.</span><span class="ar">›</span></button><button class="uc" data-demo="1"><span class="id">TOUR</span><span class="t">Full platform tour, 15 steps</span><span class="d">Ecosystem, onboarding, operations, evidence and statement, step by step.</span><span class="ar">›</span></button>
   ${USE_CASES.map(u => `<button class="uc" data-uc="${u.id}"><span class="id">${u.id}</span><span class="t">${u.t}</span><span class="d">${u.d}</span><span class="ar">›</span></button>`).join('')}`;
   $('ucScrim').hidden = false;
 });
 $('ucScrim').addEventListener('click', e => {
   if (e.target === $('ucScrim') || e.target.closest('[data-close]')) { $('ucScrim').hidden = true; return; }
-  const b = e.target.closest('[data-uc],[data-demo],[data-judge]'); if (!b) return;
+  const b = e.target.closest('[data-uc],[data-demo],[data-judge],[data-video]'); if (!b) return;
+  if (b.dataset.video) { $('ucScrim').hidden = true; recOpen(); return; }
   if (b.dataset.judge) { $('ucScrim').hidden = true; judgeStart(); render(); return; }
   if (b.dataset.demo) return tourStart(DEMO, 'Presentation demo', false);
   const u = USE_CASES.find(x => x.id === b.dataset.uc); tourStart(u.steps, u.id + ' · ' + u.t, false);
@@ -291,3 +293,5 @@ $('ucScrim').addEventListener('click', e => {
 
 state.role = 'home'; state.view = 'home';
 render();
+$('recExit').addEventListener('click', recClose);
+if (location.hash === '#video') setTimeout(recOpen, 300);

@@ -209,7 +209,7 @@ V.home = () => {
   return `<div class="home">
   <section class="hero"><div><div class="eyebrow">Reliance · hourly clean energy</div><h1>CFE Manager</h1>
     <p>One platform for everyone who makes a clean hour happen. Customers, generators, the trading member and the verifier each get their own portal. Reliance runs the operations console in the middle.</p><p class="heropromise">${CFE_PROMISE(90)}</p>
-    <div class="actions"><button class="btn" data-role="manager">Open the operations console</button><button class="btn ghost" data-act="demo">▶ Judge demo · 2 min</button><button class="btn ghost" data-act="uc">Q&amp;A use cases</button></div></div>
+    <div class="actions"><button class="btn" data-role="manager">Open the operations console</button><button class="btn ghost" data-act="video">▶ Video demo · 1:40</button><button class="btn ghost" data-act="demo">Judge demo · 4 scenes</button><button class="btn ghost" data-act="uc">Q&amp;A use cases</button></div></div>
     <div class="stats">
       <div class="stat"><b>${pc(R.M.scoreComplete)}</b><span>illustrative October score</span></div>
       <div class="stat"><b>${pc(clean / b.L, 0)}</b><span>clean right now · ${blkTime(state.block)}</span></div>
