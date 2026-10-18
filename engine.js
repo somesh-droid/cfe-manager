@@ -92,7 +92,7 @@ const SIM = (() => {
       const kf = stranded ? 1 - stranded.f : 1, EmaxB = Emax * kf, EminB = Emin * kf;
       const P_b = act(events, 'bessOut', i) ? 0 : cfg.bessMW * kf;
       let mAv = P.mkt[i] * cfg.mkt;
-      if (act(events, 'mktSpike', i)) mAv = 0;
+      if (act(events, 'mktSpike', i)) mAv = 0; else { const cu = act(events, 'catchUp', i); if (cu) mAv *= cu.factor; } // catchUp: month guard buys back lost buffer
       const gross = S + W, txOk = Math.min(gross, tx), txCurt = gross - txOk;
       const delivered = txOk * (1 - cfg.loss), losses = txOk * cfg.loss;
       const direct = Math.min(delivered, L);

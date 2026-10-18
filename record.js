@@ -14,15 +14,27 @@ const NAT = {
 };
 const TYPE_COL = { solar: 'var(--solar)', wind: 'var(--wind)', bess: 'var(--bess)', mkt: 'var(--mkt)', grid: 'var(--grid)' };
 let NR = null;
+const B96 = 96;
+const INC = [
+  { k: 'windLull', ev: { k: 'windLull', from: 5 * B96 + 72, to: 6 * B96 + 24, factor: 0.35 }, name: 'Wind lull', when: 'Night of 6 Oct', what: 'Wind −65% overnight', did: 'Storage brought forward; intraday green blocks' },
+  { k: 'bessPartial', ev: { k: 'bessPartial', from: 13 * B96 + 90, to: 14 * B96 + 24, f: 0.6 }, name: 'Battery trip', when: 'Night of 14 Oct', what: 'Koppal storage, 60% offline', did: 'Maharashtra storage to full output; schedule revised' },
+  { k: 'solarDown', ev: { k: 'solarDown', from: 20 * B96 + 36, to: 20 * B96 + 64, factor: 0.5 }, name: 'Cloudy day', when: '21 Oct', what: 'Solar −50%, 09:00–16:00', did: 'Charge target lowered; gap bought on IEX' },
+  { k: 'mktSpike', ev: { k: 'mktSpike', from: 26 * B96 + 72, to: 26 * B96 + 96 }, name: 'Exchange doesn’t clear', tag: 'IEX no-clear', when: '27 Oct', what: 'No green blocks within bid limit', did: 'No bid above mandate; grid counted at zero' }
+];
+const GUARD = 1.5; // month guard: exchange bid volume ×1.5 on the days after an incident, until the next one
 function natRun() {
   if (NR) return NR;
-  const cfg = { ...SIM.REF };
-  const R1 = SIM.run(P, cfg, [{ k: 'bessPartial', from: NAT.tripFrom, to: NAT.tripTo, f: 0.6 }]), R0n = SIM.run(P, cfg, []);
-  const q = SIM.DT;
-  let dry = null; for (let i = NAT.tripFrom; i < NAT.tripTo; i++) if (R1.blocks[i].soc <= cfg.bessMWh * 0.4 * 0.1 + 0.6) { dry = i; break; }
-  const win = (Rx, a, b) => { let L = 0, c = 0, m = 0, g = 0; for (let i = a; i < b; i++) { const x = Rx.blocks[i]; L += x.L; c += x.solarDir + x.windDir + x.disElig + x.mkt; m += x.mkt; g += x.gridToLoad + x.dis - x.disElig; } return { L: L * q, c: c * q, share: c / L, m: m * q, g: g * q }; };
-  let gdam = 0; for (let i = NAT.day * 96; i < NAT.day * 96 + 96; i++) gdam += R0n.blocks[i].mkt * q;
-  NR = { cfg, R1, R0n, dry, night0: win(R0n, NAT.tripFrom, 14 * 96 + 28), night1: win(R1, NAT.tripFrom, 14 * 96 + 28), gdam };
+  const cfg = { ...SIM.REF }, q = SIM.DT;
+  const evs = INC.map(x => x.ev), starts = INC.map(x => Math.floor(x.ev.from / B96) + 1);
+  const guard = starts.map((d, j) => ({ k: 'catchUp', from: d * B96, to: (starts[j + 1] || SIM.DAYS) * B96, factor: GUARD }));
+  const R1 = SIM.run(P, cfg, [...evs, ...guard]), Rn = SIM.run(P, cfg, evs), R0n = SIM.run(P, cfg, []);
+  const daily = Rx => { const o = []; for (let d = 0; d < SIM.DAYS; d++) { let L = 0, c = 0; for (let i = d * B96; i < d * B96 + B96; i++) { const x = Rx.blocks[i]; L += x.L; c += x.solarDir + x.windDir + x.disElig + x.mkt; } o.push(c / L); } return o; };
+  const cum = Rx => { const o = []; let L = 0, c = 0; for (let d = 0; d < SIM.DAYS; d++) { for (let i = d * B96; i < d * B96 + B96; i++) { const x = Rx.blocks[i]; L += x.L; c += x.solarDir + x.windDir + x.disElig + x.mkt; } o.push(c / L); } return o; };
+  let extra = 0; for (let i = 0; i < SIM.NB; i++) extra += (R1.blocks[i].mkt - Rn.blocks[i].mkt) * q;
+  const d0 = daily(R0n), dn = daily(Rn);
+  INC.forEach(x => { const a = Math.floor(x.ev.from / B96), b = Math.min(SIM.DAYS - 1, Math.floor((x.ev.to - 1) / B96)); let best = a, drop = -1; for (let d = a; d <= b; d++) if (d0[d] - dn[d] > drop) { drop = d0[d] - dn[d]; best = d; } x.day = best; });
+  let gdam = 0; for (let i = NAT.day * B96; i < NAT.day * B96 + B96; i++) gdam += R0n.blocks[i].mkt * q;
+  NR = { cfg, R1, Rn, R0n, daily: daily(R1), cum1: cum(R1), cumN: cum(Rn), extra, gdam, load: R1.M.load };
   return NR;
 }
 /* per-asset MW in a block */
@@ -195,14 +207,43 @@ function natConsole(Rx, cur, trip) {
     </div>`;
 }
 
+/* ---------- month view: calendar of daily clean share + running month score ---------- */
+function monthCal(o = {}) {
+  const N = natRun(), first = 3; // 1 Oct 2026 is a Thursday (Mon = 0)
+  const incOf = d => INC.find(x => x.day === d);
+  let h = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(w => `<div class="mc-wd">${w}</div>`).join('') + '<div></div>'.repeat(first);
+  N.daily.forEach((v, d) => {
+    const inc = incOf(d), k = INC.indexOf(inc), cls = v >= 0.9 ? 'g' : v >= 0.8 ? 'a' : 'r';
+    const at = (o.tileAt || 0) + d * (o.tileStep ?? 0.05);
+    h += `<div class="mc-day ${cls} rv" data-at="${at.toFixed(2)}"><span class="n">${d + 1}</span><b>${Math.round(v * 100)}%</b>${inc ? `<span class="mc-inc rv" data-at="${(o.incAt ? o.incAt[k] : 0).toFixed(2)}">${inc.tag || inc.name}</span>` : ''}</div>`;
+  });
+  return `<div class="mc">${h}</div>`;
+}
+function monthScoreSVG(o = {}) {
+  const N = natRun(), W = 1300, H = 250, ml = 56, mr = 150, mt = 14, mb = 30, pw = W - ml - mr, ph = H - mt - mb, lo = 0.86, hi = 0.93;
+  const x = d => ml + (d + 0.5) * pw / SIM.DAYS, y = v => mt + ph * (1 - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo));
+  const path = a => a.map((v, d) => `${d ? 'L' : 'M'}${x(d).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  let g = '';
+  [0.86, 0.88, 0.9, 0.92].forEach(v => g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0.9 ? 'var(--crit)' : 'var(--line-2)'}" ${v === 0.9 ? 'stroke-dasharray="7 5" stroke-width="1.6"' : ''}/><text x="${ml - 8}" y="${y(v) + 5}" text-anchor="end" style="font-size:13px">${Math.round(v * 100)}%</text>`);
+  g += `<text x="${ml + 6}" y="${y(0.9) - 7}" style="font:600 13px var(--f-body);fill:var(--crit)">CFE90 target</text>`;
+  [1, 8, 15, 22, 29].forEach(d => g += `<text x="${x(d - 1)}" y="${H - 8}" text-anchor="middle" style="font-size:12px">${d} Oct</text>`);
+  INC.forEach(i => g += `<line x1="${x(i.day)}" x2="${x(i.day)}" y1="${mt}" y2="${mt + ph}" stroke="var(--crit)" stroke-opacity=".25" stroke-width="10"/>`);
+  const nE = N.cumN[SIM.DAYS - 1], gE = N.cum1[SIM.DAYS - 1];
+  g += `<defs><clipPath id="mcA"><rect class="growx" style="animation-delay:${o.aAt || 0}s;animation-duration:${o.dur || 3}s" x="${ml}" y="0" width="${pw + mr}" height="${H}"/></clipPath><clipPath id="mcB"><rect class="growx" style="animation-delay:${o.bAt || 0}s;animation-duration:${o.dur || 3}s" x="${ml}" y="0" width="${pw + mr}" height="${H}"/></clipPath></defs>`;
+  g += `<g clip-path="url(#mcA)"><path d="${path(N.cumN)}" fill="none" stroke="var(--grid)" stroke-width="3" stroke-dasharray="8 6"/><circle cx="${x(30)}" cy="${y(nE)}" r="5" fill="var(--grid)"/><text x="${x(30) + 12}" y="${y(nE) + 20}" style="font:700 17px var(--f-mono);fill:var(--muted)">${pc(nE)}</text></g>`;
+  g += `<g clip-path="url(#mcB)"><path d="${path(N.cum1)}" fill="none" stroke="var(--brand)" stroke-width="4"/><circle cx="${x(30)}" cy="${y(gE)}" r="6" fill="var(--brand)"/><text x="${x(30) + 12}" y="${y(gE) - 4}" style="font:700 19px var(--f-mono);fill:var(--brand)">${pc(gE)}</text></g>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Month-to-date score with and without the month guard">${g}</svg>`;
+}
+
 /* ---------- beats ---------- */
 const BEATS = [
-  { at: 0, end: 9, ch: 'Tonight', render: () => {
-    const N = natRun(), b = N.R1.blocks[NAT.tripFrom];
-    return `<div class="rv-split"><div class="rv-map">${natMap(b, { trip: true })}</div><div class="rv-side">
-      <div class="rv-clock rv" data-at="0.3">22:30</div>
-      <h1 class="rv-h rv" data-at="1">A 150 MW battery in Karnataka trips.</h1>
-      <h2 class="rv-sub rv" data-at="4">A data centre in Mumbai keeps its clean-energy promise, and proves it.</h2></div></div>`; }, cap: [[0.5, 'Tonight, 22:30'], [4.5, 'Here’s how']] },
+  { at: 0, end: 9, ch: 'October', render: () => {
+    const N = natRun();
+    return `<div class="rv-split mwide"><div class="rv-calwrap">${monthCal({ tileAt: 0.1, tileStep: 0.025, incAt: [2.3, 1.3, 3.1, 3.6] })}</div><div class="rv-side">
+      <div class="rv-kicker rv" data-at="0.2">One month · 31 days · 2,976 blocks</div>
+      <h1 class="rv-h rv" data-at="1">Four things break.</h1>
+      <div class="rv-hero rv" data-at="4.2"><b>${pc(N.R1.M.scoreComplete)}</b><span>clean, hour by hour, for a Mumbai data centre</span></div>
+      <h2 class="rv-sub rv" data-at="5.6">And every clean hour can be proved.</h2></div></div>`; }, cap: [[0.5, 'One month, four incidents'], [6.5, 'Here’s how']] },
   { at: 9, end: 23, ch: 'The platform', render: () => {
     const shots = [['Five doors: one operations console and a portal for every stakeholder', () => V.home()],
       ['Suppliers clear six automatic checks', () => { state.sw = { step: 4, f: { ...SW_PRESETS.bhuj }, gates: null, value: null }; return V.s_onboard().replace(/Inside Gujarat boundary/g, 'Delivery path to customer state').replace('Same-state rule for hourly matching', 'Inter-state corridor (GNA) is schedulable'); }],
@@ -235,20 +276,21 @@ const BEATS = [
       <div class="nc-list">${parts.map(([n, v, c], k) => `<div class="nc-li rv" data-at="${3.8 + k * 1.1}"><span class="dotk" style="background:${c}"></span><span>${k + 1}. ${n}</span><b>${f0(v)} MW</b></div>`).join('')}</div>
       <p class="rv-note rv" data-at="8.2">Every 15 minutes, 96 times a day.</p></div></div>`; },
     cap: [[0.3, 'Block by block, through the evening'], [3.2, '21:00 · every block filled in merit order']] },
-  { at: 57, end: 77, ch: 'Contingency', run: () => natRun().R1, trip: true, live: lt => NAT.tripFrom + (lt < 5 ? 0 : Math.min(12, Math.floor((lt - 5) / 0.5))), render: () => {
-    const N = natRun(), b1 = N.R1.blocks[NAT.tripFrom], b0 = N.R0n.blocks[NAT.tripFrom];
-    const mhBefore = b0.dis * 100 / 250, dryT = N.dry !== null ? blkTime(N.dry % 96) : '—', addM = N.night1.m - N.night0.m;
-    const acts = [['Maharashtra storage to full output', f0(mhBefore) + ' → ' + f0(b1.dis) + ' MW, inside tolling limits'], ['Look-ahead', 'Storage now runs dry at ' + dryT + ', not dawn'], ['Intraday green blocks bought', '+' + f0(addM) + ' MWh on IEX via the trading member'], ['Revised schedule filed', 'SRLDC and WRLDC, next revision'], ['Residual on grid supply', 'Load stays served; counts at zero']];
-    return `<div class="nc-wrap"><div class="nc-main" id="ncLive"></div><div class="nc-rail">
-      <div class="rv-clock crit rv" id="ncClock" data-at="0">22:30</div>
-      <h1 class="rv-h rv" data-at="0.6"><span style="color:var(--crit)">Koppal storage trips.</span> 60% of storage offline.</h1>
-      <div class="rv-steps">${acts.map(([t, d], k) => `<div class="rv-step rv" data-at="${3.2 + k * 2.6}"><span class="ic">${k + 1}</span><span><b>${t}</b><br><span>${d}</span></span></div>`).join('')}</div>
-      <div class="nc-big rv" data-at="16"><span>Tonight's clean share</span><b>${pc(N.night0.share, 0)} → <i style="font-style:normal;color:var(--crit)">${pc(N.night1.share, 0)}</i></b><span>Month still <b style="color:var(--good);font-size:inherit">${pc(N.R1.M.scoreComplete)}</b> vs CFE90</span></div></div></div>`; },
-    cap: [[0.5, '22:30 · battery trip'], [3.2, 'The engine re-plans within one block'], [16, 'The month still clears CFE90']] },
+  { at: 57, end: 77, ch: 'The month', render: () => {
+    const N = natRun(), share = N.extra / N.load;
+    return `<div class="nc-wrap"><div class="nc-main">
+        <div class="nc-flow mc-panel rv" data-at="0"><div class="nc-ch"><b>October, day by day</b><span>share of each day matched hour by hour</span></div>${monthCal({ tileAt: 0.4, tileStep: 0.07, incAt: [3.4, 4.6, 5.8, 7.0] })}</div>
+        <div class="nc-flow rv" data-at="9"><div class="nc-ch"><b>Month-to-date score</b><span class="mc-leg"><i class="dl"></i>Re-plan each night only <i class="sl"></i>With the month guard</span></div>${monthScoreSVG({ aAt: 9.2, bAt: 12, dur: 3 })}</div>
+      </div><div class="nc-rail">
+      <div class="rv-kicker rv" data-at="0.2">One night × 31</div>
+      <div class="mc-incs">${INC.map((x, k) => `<div class="mc-ic rv" data-at="${3.4 + k * 1.2}"><span class="w">${x.when}</span><b>${x.name}</b><span>${x.did}</span></div>`).join('')}</div>
+      <div class="mc-guard rv" data-at="12"><b>Month guard</b><span>After each incident, extra green blocks on IEX over the following days: +${f0(N.extra)} MWh, ${(share * 100).toFixed(1)}% of the month’s load.</span></div>
+      <div class="nc-big rv" data-at="16.5"><span>The month closes at</span><b style="color:var(--good)">${pc(N.R1.M.scoreComplete)}</b><span>vs CFE90 · ${pc(N.Rn.M.scoreComplete)} without the guard</span></div></div></div>`; },
+    cap: [[0.3, 'That’s one night. Now run it for 31.'], [3.2, 'Four incidents in October'], [9, 'Each one re-planned within a block'], [11.5, 'The engine watches the month, not just the hour'], [16.5, 'The month closes above CFE90']] },
   { at: 77, end: 92, ch: 'The proof', render: () => {
     const N = natRun(), M = N.R1.M;
     const chain = [['Generator meters', '7 assets · 15-min data, D+1'], ['Despatch-centre accounts', 'SLDC and RLDC energy accounts'], ['Exchange trades', 'IEX obligation via the member'], ['Customer meter', 'Navi Mumbai site, 15-min'], ['Certificates cancelled', 'to the customer; stored solar keeps its origin'], ['Independent verifier', 'signs off the month']];
-    return `<div class="rv-proof"><div class="rv-kicker rv" data-at="0.2">After the night</div><h1 class="rv-h rv" data-at="0.6">Four records must agree before an hour counts</h1>
+    return `<div class="rv-proof"><div class="rv-kicker rv" data-at="0.2">Behind every hour</div><h1 class="rv-h rv" data-at="0.6">Four records must agree before an hour counts</h1>
       <div class="rv-chain">${chain.map(([t, d], k) => `<div class="rv-link rv ${k === 5 ? 'wait' : ''}" data-at="${2 + k * 1.6}"><span class="ic">${k === 5 ? '…' : '✓'}</span><b>${t}</b><span>${d}</span></div>`).join('<span class="rv-arrow">→</span>')}</div>
       <div class="rv proofstage" data-at="11.5">${stageStrip(M)}</div></div>`; },
     cap: [[0.5, 'Meters, despatch accounts and trades must agree'], [9.5, 'Certificates cancelled, then independent sign-off']] },
