@@ -446,6 +446,29 @@ body.recording{overflow:hidden}
 .rv-map{position:relative;height:100%;display:grid;align-items:center}
 .rv-map svg{width:100%;height:auto;max-height:calc(100vh - 230px)}
 .rv-layer{grid-area:1/1}
+.rv-split.wide{grid-template-columns:minmax(0,2.5fr) minmax(0,1fr)}
+.rv-split.wide .rv-step b{font-size:19px}.rv-split.wide .rv-step span span{font-size:15.5px}
+.nc-wrap{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:28px;height:100%}
+.nc-main{display:grid;gap:14px;align-content:center}
+.nc-flow{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 18px}
+.nc-flow svg{width:100%;height:auto;display:block}
+.nc-charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.nc-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.nc-card svg{width:100%;height:auto;display:block}
+.nc-ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.nc-ch b{font-size:16px;font-weight:600}.nc-ch span{font-size:12.5px;color:var(--muted)}
+.nc-kpi{display:grid;align-content:start;gap:10px}
+.nc-kpi>div:not(.nc-ch){display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line-2);padding-top:10px}
+.nc-kpi>div span{font-size:15px;color:var(--muted)}.nc-kpi>div b{font-family:var(--f-display);font-size:30px;font-weight:600}
+.nc-rail{display:grid;gap:16px;align-content:center}
+.nc-rail .rv-h{font-size:34px}.nc-rail .rv-clock{font-size:58px}
+.nc-rail .rv-step{padding:10px 12px;gap:10px;grid-template-columns:32px minmax(0,1fr)}.nc-rail .rv-step .ic{width:30px;height:30px;font-size:14px}
+.nc-rail .rv-step b{font-size:17px}.nc-rail .rv-step span span{font-size:14.5px}
+.nc-list{display:grid;gap:10px}
+.nc-li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:12px;align-items:center;font-size:21px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.nc-li b{font-family:var(--f-display);font-size:26px}
+.nc-big{display:grid;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.nc-big>span{font-size:15px;color:var(--muted)}.nc-big>b{font-family:var(--f-display);font-size:38px;font-weight:600}
 .rv-maptime{position:absolute;top:6px;left:6px;font-family:var(--f-mono);font-size:15px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
 .rv-side{display:grid;gap:18px;align-content:center}
 .rv-clocks{display:grid}.rv-clocks>.rv-clock{grid-area:1/1}
