@@ -268,7 +268,7 @@ V.contracts = () => `
   <div class="g2">
     <div class="panel"><div class="ph"><h3>Who carries which risk</h3></div><div class="tw"><table><thead><tr><th>Risk</th><th>Allocated to</th></tr></thead><tbody>${RISK_ALLOC.map(([r, w]) => `<tr><td>${r}</td><td class="wrap small">${w}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="panel"><div class="ph"><h3>Service schedule</h3>${chip('Method v1.0', 'neutral')}</div>
-      <dl class="kv"><dt>Metric</dt><dd>Monthly load-weighted share of hourly-matched eligible MWh</dd><dt>Floor</dt><dd>CFE${state.tier}</dd><dt>Geography</dt><dd>Same state (Gujarat)</dd><dt>Storage</dt><dd>Charge source tracked; losses applied</dd><dt>Excluded</dt><dd>Grid residual, untracked storage, surplus, unissued certificates</dd><dt>Data gaps</dt><dd>Counted as unmatched until reconciled</dd><dt>Remedy</dt><dd>Service credit on verified month only, capped (illustrative 2% of fee per point, max 20%)</dd><dt>Not promised</dt><dd>90% every hour; server uptime; future regulatory compliance</dd></dl></div>
+      <dl class="kv"><dt>Metric</dt><dd>Monthly load-weighted share of hourly-matched eligible MWh</dd><dt>Floor</dt><dd>CFE${state.tier}</dd><dt>Geography</dt><dd>Same state (Gujarat)</dd><dt>Storage</dt><dd>Charge source tracked; losses applied</dd><dt>Excluded</dt><dd>Grid residual, untracked storage, surplus, unissued certificates</dd><dt>Data gaps</dt><dd>Counted as unmatched until reconciled</dd><dt>Remedy</dt><dd>Service credit on verified month only, capped (2% of the monthly bill per point missed, capped at 10%)</dd><dt>Not promised</dt><dd>90% every hour; server uptime; future regulatory compliance</dd></dl></div>
   </div>`;
 
 V.ecosystem = () => {
